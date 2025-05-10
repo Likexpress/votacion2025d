@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 import requests
 from flask_migrate import Migrate
+import json
 
 # ---------------------------
 # Configuración inicial
@@ -48,7 +49,7 @@ class NumeroTemporal(db.Model):
     numero = db.Column(db.String(50), unique=True, nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ⚠️ SOLO USAR EN ENTORNO DE DESARROLLO
+# ⚠️ SOLO PARA DESARROLLO: En producción usar migraciones
 with app.app_context():
     db.create_all()
 
@@ -58,7 +59,8 @@ with app.app_context():
 @app.route('/whatsapp', methods=['POST'])
 def whatsapp_webhook():
     data = request.json
-    print("📥 JSON recibido:", data)
+    print("📥 JSON recibido:")
+    print(json.dumps(data, indent=2))  # Log para depuración
 
     try:
         entry = data['entry'][0]
@@ -90,7 +92,7 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": numero,
+                "to": "+" + numero,  # ✅ CORREGIDO
                 "type": "text",
                 "text": {
                     "preview_url": False,
