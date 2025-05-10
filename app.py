@@ -61,7 +61,7 @@ with app.app_context():
 def whatsapp_webhook():
     data = request.json
     print("📥 JSON recibido:")
-    print(json.dumps(data, indent=2))
+    print(json.dumps(data, indent=2))  # Log para depuración
 
     try:
         entry = data['entry'][0]
@@ -77,14 +77,23 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
+            # Evitar duplicados en la tabla temporal
             if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
                 db.session.add(NumeroTemporal(numero=numero_completo))
                 db.session.commit()
 
+            # Generar token cifrado para el link
             token = serializer.dumps(numero_completo)
-            dominio = os.environ.get("AZURE_DOMAIN", "https://sistemadevotacion2025.azurewebsites.net")
+
+            # Obtener dominio desde variable de entorno o usar el actual
+            dominio = os.environ.get("AZURE_DOMAIN")
+            if not dominio:
+                dominio = request.host_url.rstrip('/')
+
+            # Crear el link completo
             link = f"{dominio}/votar?token={token}"
 
+            # Enviar mensaje de WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
@@ -93,11 +102,11 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": "+" + numero,
+                "to": "+" + numero,  # ⚠️ Este número debe llevar "+" al inicio
                 "type": "text",
                 "text": {
                     "preview_url": False,
-                    "body": f"{link}"
+                    "body": f"Hola, gracias por participar en las Primarias Bolivia 2025.\n\nAquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}"
                 }
             }
 
@@ -105,12 +114,13 @@ def whatsapp_webhook():
             if r.status_code == 200:
                 print("✅ Enlace enviado correctamente.")
             else:
-                print("❌ Error al enviar:", r.text)
+                print(f"❌ Error al enviar: {r.status_code} - {r.text}")
 
     except Exception as e:
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 # ---------------------------
