@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from datetime import datetime
@@ -7,20 +7,19 @@ import os
 import requests
 from flask_migrate import Migrate
 import json
-import threading  # al inicio del archivo
-
+import threading
 
 # ---------------------------
 # Configuración inicial
 # ---------------------------
-load_dotenv()  # Solo tiene efecto localmente, en Azure se usan variables del entorno
+load_dotenv()
 
 app = Flask(__name__)
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
 serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 # ---------------------------
-# Configuración de la base de datos
+# Base de datos
 # ---------------------------
 db_url = os.environ.get("DATABASE_URL", "sqlite:///votos.db")
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
@@ -51,7 +50,7 @@ class NumeroTemporal(db.Model):
     numero = db.Column(db.String(50), unique=True, nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ⚠️ SOLO PARA DESARROLLO: En producción usar migraciones
+# ⚠️ SOLO EN DESARROLLO: usar migraciones en producción
 with app.app_context():
     db.create_all()
 
@@ -62,15 +61,20 @@ with app.app_context():
 def whatsapp_webhook():
     data = request.json
     print("📥 JSON recibido:")
-    print(json.dumps(data, indent=2))  # Log para depuración
+    print(json.dumps(data, indent=2))
 
+    # Responder inmediatamente a 360dialog
+    threading.Thread(target=procesar_mensaje, args=(data,)).start()
+    return "ok", 200
+
+def procesar_mensaje(data):
     try:
         entry = data['entry'][0]
         value = entry['changes'][0]['value']
         messages = value.get('messages')
 
         if not messages:
-            return "ok", 200
+            return
 
         numero = messages[0]['from']
         texto = messages[0]['text']['body'].strip().lower()
@@ -78,9 +82,10 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
-            if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
-                db.session.add(NumeroTemporal(numero=numero_completo))
-                db.session.commit()
+            with app.app_context():
+                if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
+                    db.session.add(NumeroTemporal(numero=numero_completo))
+                    db.session.commit()
 
             token = serializer.dumps(numero_completo)
             dominio = os.environ.get("AZURE_DOMAIN", "https://sistemadevotacion2025.azurewebsites.net")
@@ -94,7 +99,7 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": "+" + numero,  # ✅ CORREGIDO
+                "to": "+" + numero,
                 "type": "text",
                 "text": {
                     "preview_url": False,
@@ -110,8 +115,6 @@ def whatsapp_webhook():
 
     except Exception as e:
         print("❌ Error procesando mensaje:", str(e))
-
-    return "ok", 200
 
 # ---------------------------
 # Página principal
@@ -156,7 +159,7 @@ def votar():
         return "Acceso no válido."
 
     try:
-        numero = serializer.loads(token, max_age=600)  # 10 minutos
+        numero = serializer.loads(token, max_age=600)
     except SignatureExpired:
         return "El enlace ha expirado. Solicita uno nuevo."
     except BadSignature:
