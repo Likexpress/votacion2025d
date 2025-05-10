@@ -7,6 +7,8 @@ import os
 import requests
 from flask_migrate import Migrate
 import json
+import threading  # al inicio del archivo
+
 
 # ---------------------------
 # Configuración inicial
