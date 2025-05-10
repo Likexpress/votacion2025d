@@ -8,16 +8,16 @@ import requests
 from flask_migrate import Migrate
 
 # ---------------------------
-# Cargar configuración
+# Configuración inicial
 # ---------------------------
-load_dotenv()
+load_dotenv()  # Solo tiene efecto localmente, en Azure se usan variables del entorno
 
 app = Flask(__name__)
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
 serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 # ---------------------------
-# Base de datos
+# Configuración de la base de datos
 # ---------------------------
 db_url = os.environ.get("DATABASE_URL", "sqlite:///votos.db")
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
@@ -26,7 +26,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # ---------------------------
-# Modelos de datos
+# Modelos
 # ---------------------------
 class Voto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -48,11 +48,12 @@ class NumeroTemporal(db.Model):
     numero = db.Column(db.String(50), unique=True, nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
+# ⚠️ SOLO USAR EN ENTORNO DE DESARROLLO
 with app.app_context():
     db.create_all()
 
 # ---------------------------
-# Webhook de WhatsApp
+# Webhook para WhatsApp
 # ---------------------------
 @app.route('/whatsapp', methods=['POST'])
 def whatsapp_webhook():
@@ -73,16 +74,14 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
-            # Guardar temporalmente el número si aún no está
             if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
                 db.session.add(NumeroTemporal(numero=numero_completo))
                 db.session.commit()
 
-            # Generar token y usar el dominio de Azure
             token = serializer.dumps(numero_completo)
-            link = f"https://sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net/votar?token={token}"
+            dominio = os.environ.get("AZURE_DOMAIN", "https://sistemadevotacion2025.azurewebsites.net")
+            link = f"{dominio}/votar?token={token}"
 
-            # Preparar y enviar mensaje de WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
@@ -110,10 +109,8 @@ def whatsapp_webhook():
 
     return "ok", 200
 
-
-
 # ---------------------------
-# Página inicial
+# Página principal
 # ---------------------------
 @app.route('/')
 def index():
@@ -137,7 +134,6 @@ def generar_link():
         if Voto.query.filter_by(numero=numero_completo).first():
             return render_template("voto_ya_registrado.html")
 
-        # Guardar número en tabla temporal
         if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
             db.session.add(NumeroTemporal(numero=numero_completo))
             db.session.commit()
@@ -219,20 +215,21 @@ def enviar_voto():
                            pais=pais)
 
 # ---------------------------
-# Preguntas frecuentes
+# Página de preguntas frecuentes
 # ---------------------------
 @app.route('/preguntas')
 def preguntas_frecuentes():
     return render_template("preguntas.html")
 
 # ---------------------------
-# Países
+# Lista de países
 # ---------------------------
 PAISES_CODIGOS = {
     "Bolivia": "+591"
 }
 
 # ---------------------------
-# Ejecutar app
+# Ejecutar localmente
 # ---------------------------
-
+if __name__ == '__main__':
+    app.run(debug=True)
