@@ -8,7 +8,6 @@ import requests
 from flask_migrate import Migrate
 import json
 
-
 # ---------------------------
 # Configuración inicial
 # ---------------------------
@@ -61,7 +60,7 @@ with app.app_context():
 def whatsapp_webhook():
     data = request.json
     print("📥 JSON recibido:")
-    print(json.dumps(data, indent=2))
+    print(json.dumps(data, indent=2))  # Log para depuración
 
     try:
         entry = data['entry'][0]
@@ -83,7 +82,6 @@ def whatsapp_webhook():
 
             token = serializer.dumps(numero_completo)
             dominio = os.environ.get("AZURE_DOMAIN", "https://sistemadevotacion2025.azurewebsites.net")
-            
             link = f"{dominio}/votar?token={token}"
 
             url = "https://waba-v2.360dialog.io/messages"
@@ -94,11 +92,11 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": "+" + numero,
+                "to": "+" + numero,  # ✅ CORREGIDO
                 "type": "text",
                 "text": {
                     "preview_url": False,
-                    "body": f"{link}"
+                    "body": f"Hola, gracias por participar en las Primarias Bolivia 2025.\n\nAquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}"
                 }
             }
 
@@ -112,7 +110,6 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
-
 
 # ---------------------------
 # Página principal
