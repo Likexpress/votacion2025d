@@ -82,7 +82,8 @@ def whatsapp_webhook():
                 db.session.commit()
 
             token = serializer.dumps(numero_completo)
-            dominio = os.environ.get("AZURE_DOMAIN", "https://sistemadevotacion2025.azurewebsites.net")
+            dominio = os.environ.get("AZURE_DOMAIN", "https://sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net")
+
             link = f"{dominio}/votar?token={token}"
 
             url = "https://waba-v2.360dialog.io/messages"
