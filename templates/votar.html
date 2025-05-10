@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Elecciones Ciudadanas 2025</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <style>
+    body {
+      background-color: #f4f6f9;
+    }
+    .form-wrapper {
+      max-width: 950px;
+      margin: auto;
+      padding: 20px;
+    }
+    .logo {
+      max-width: 100px;
+      display: block;
+      margin: 0 auto 10px;
+    }
+    .subtitle {
+      font-size: 1.1rem;
+      color: #6c757d;
+    }
+    .card {
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.06);
+    }
+    .candidato-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .candidato-card {
+      background: #fff;
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: 1px solid #dee2e6;
+      display: flex;
+      align-items: center;
+      transition: box-shadow 0.2s ease-in-out;
+    }
+    .candidato-card:hover {
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .candidato-card img {
+      width: 55px;
+      height: 55px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-right: 15px;
+      border: 1px solid #ccc;
+    }
+    .resumen {
+      background-color: #fff;
+      padding: 20px;
+      margin-top: 25px;
+      border-left: 4px solid #198754;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-wrapper">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo">
+    <h2 class="text-center">Votaciones Primarias Bolivia 2025</h2>
+    <p class="text-center subtitle mb-4">Participa en las votaciones primarias y elige al candidato de oposición que nos representará en las elecciones 2025. Tu voz cuenta, tu voto decide el futuro de Bolivia.</p>
+
+    <div class="card p-4">
+      <form method="post" action="/enviar_voto" class="needs-validation" novalidate onsubmit="mostrarResumen(); return true;">
+        <input type="hidden" name="numero" value="{{ numero }}">
+        <input type="hidden" id="latitud" name="latitud">
+        <input type="hidden" id="longitud" name="longitud">
+        <input type="hidden" id="recaptcha_token" name="recaptcha_token">
+
+        <!-- Carnet -->
+        <div class="mb-3">
+          <label for="ci" class="form-label">Número de Carnet de Identidad:</label>
+          <input type="number" id="ci" name="ci" class="form-control" required>
+          <div class="invalid-feedback">Por favor, introduce tu número de carnet.</div>
+        </div>
+
+        <!-- Fecha -->
+        <div class="mb-3">
+          <label class="form-label">Fecha de nacimiento:</label>
+          <div class="row g-2">
+            <div class="col">
+              <select class="form-select" name="dia_nacimiento" required>
+                <option value="">Día</option>
+                {% for dia in range(1, 32) %}
+                <option value="{{ dia }}">{{ dia }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col">
+              <select class="form-select" name="mes_nacimiento" required>
+                <option value="">Mes</option>
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+            </div>
+            <div class="col">
+              <select class="form-select" name="anio_nacimiento" required>
+                <option value="">Año</option>
+                {% for anio in range(1920, 2010) %}
+                <option value="{{ anio }}">{{ anio }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- País y Ciudad -->
+        <div class="mb-3">
+          <label for="pais" class="form-label">País:</label>
+          <select id="pais" name="pais" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label for="ciudad" class="form-label">Ciudad:</label>
+          <select id="ciudad" name="ciudad" class="form-select" required></select>
+        </div>
+
+        <!-- Candidatos -->
+        <div class="mb-4">
+          <label class="form-label mb-2">Selecciona tu candidato:</label>
+          <div class="candidato-grid">
+            {% for candidato in [
+              'Amparo Ballivián',
+              'Chi Hyun Chung',
+              'Edgar Uriona',
+              'Edmar Lara',
+              'Gustavo Blacutt',
+              'Jaime Dunn',
+              'Jorge Quiroga Ramirez',
+              'José Carlos Sánchez',
+              'Manfred Reyes Villa',
+              'Rodrigo Paz Pereira',
+              'Samuel Doria Medina'
+            ] %}
+            <label class="candidato-card">
+              <input class="form-check-input me-2" type="radio" name="candidato" value="{{ candidato }}" required>
+              <img src="{{ url_for('static', filename='img/' + candidato|lower|replace(' ', '-') + '.png') }}" alt="{{ candidato }}">
+              <span>{{ candidato }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Botón -->
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-lg">Enviar Voto</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Resumen -->
+    <div id="resumenDatos" class="resumen d-none">
+      <h5 class="text-success">Resumen de tus datos:</h5>
+      <ul class="list-unstyled mb-0">
+        <li><strong>CI:</strong> <span id="res_ci"></span></li>
+        <li><strong>Fecha de Nacimiento:</strong> <span id="res_fecha"></span></li>
+        <li><strong>País:</strong> <span id="res_pais"></span></li>
+        <li><strong>Ciudad:</strong> <span id="res_ciudad"></span></li>
+        <li><strong>Candidato:</strong> <span id="res_candidato"></span></li>
+        <li><strong>Latitud:</strong> <span id="res_lat"></span></li>
+        <li><strong>Longitud:</strong> <span id="res_long"></span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
+  <script>
+    grecaptcha.ready(function() {
+      grecaptcha.execute('{{ recaptcha_site_key }}', {action: 'submit'}).then(function(token) {
+        document.getElementById('recaptcha_token').value = token;
+      });
+    });
+
+    async function cargarPaises() {
+      const res = await fetch("https://countriesnow.space/api/v0.1/countries");
+      const data = await res.json();
+      const selectPais = $('#pais');
+      let paisPorDefecto = "Bolivia";
+
+      data.data.forEach(p => {
+        const option = new Option(p.country, p.country);
+        if (p.country === paisPorDefecto) option.selected = true;
+        selectPais.append(option);
+      });
+
+      await cargarCiudades(paisPorDefecto);
+      selectPais.on('change', e => cargarCiudades(e.target.value));
+    }
+
+    async function cargarCiudades(pais) {
+      const selectCiudad = $('#ciudad');
+      selectCiudad.empty().append(new Option("Cargando...", ""));
+      const res = await fetch("https://countriesnow.space/api/v0.1/countries/cities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: pais })
+      });
+      const data = await res.json();
+      selectCiudad.empty().append(new Option("Seleccione una ciudad", ""));
+      data.data.forEach(c => selectCiudad.append(new Option(c, c)));
+    }
+
+    function obtenerGeolocalizacion() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          $('#latitud').val(pos.coords.latitude);
+          $('#longitud').val(pos.coords.longitude);
+        });
+      }
+    }
+
+    function mostrarResumen() {
+      document.getElementById('res_ci').textContent = document.getElementById('ci').value;
+      document.getElementById('res_fecha').textContent =
+        document.querySelector('[name="dia_nacimiento"]').value + "/" +
+        document.querySelector('[name="mes_nacimiento"]').value + "/" +
+        document.querySelector('[name="anio_nacimiento"]').value;
+      document.getElementById('res_pais').textContent = document.getElementById('pais').value;
+      document.getElementById('res_ciudad').textContent = document.getElementById('ciudad').value;
+      document.getElementById('res_candidato').textContent = document.querySelector('[name="candidato"]:checked').value;
+      document.getElementById('res_lat').textContent = document.getElementById('latitud').value;
+      document.getElementById('res_long').textContent = document.getElementById('longitud').value;
+      document.getElementById('resumenDatos').classList.remove('d-none');
+    }
+
+    $(document).ready(() => {
+      $('#pais').select2({ placeholder: "Seleccione un país", width: '100%' });
+      $('#ciudad').select2({ placeholder: "Seleccione una ciudad", width: '100%' });
+      cargarPaises();
+      obtenerGeolocalizacion();
+
+      (() => {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(form => {
+          form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+          }, false);
+        });
+      })();
+    });
+  </script>
+
+  <footer class="text-center text-muted mt-5 pb-4">
+    <hr>
+    <p class="mb-1">&copy; 2025 <strong>Primarias Bunker</strong></p>
+    <small>Participación ciudadana por un futuro democrático</small>
+  </footer>
+</body>
+</html>
