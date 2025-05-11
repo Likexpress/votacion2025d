@@ -91,12 +91,13 @@ def whatsapp_webhook():
 
             # Preparar mensaje personalizado y profesional
             mensaje = (
-                "🇧🇴 Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
-                "🗳️ Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
-                f"🔗 Aquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}\n\n"
-                "⚠️ Este enlace es personal e intransferible. Solo se permite un voto por persona.\n\n"
+                "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
+                "Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
+                f"Aquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}\n\n"
+                "Este enlace es personal e intransferible. Solo se permite un voto por persona.\n\n"
                 "Gracias por ser parte del cambio que Bolivia necesita."
             )
+
 
             # Enviar por WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
