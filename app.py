@@ -82,7 +82,10 @@ def whatsapp_webhook():
                 db.session.commit()
 
             token = serializer.dumps(numero_completo)
-            dominio = os.environ.get("AZURE_DOMAIN", "https://sistemadevotacion2025.azurewebsites.net")
+            dominio = os.environ.get("AZURE_DOMAIN")
+            if not dominio:
+                dominio = request.host_url.rstrip('/')
+
             
             link = f"{dominio}/votar?token={token}"
 
