@@ -77,18 +77,19 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
+            # Guardar número si no está ya en tabla temporal
             if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
                 db.session.add(NumeroTemporal(numero=numero_completo))
                 db.session.commit()
 
+            # Generar token y link de votación
             token = serializer.dumps(numero_completo)
             dominio = os.environ.get("AZURE_DOMAIN")
             if not dominio:
                 dominio = request.host_url.rstrip('/')
-
-            
             link = f"{dominio}/votar?token={token}"
 
+            # Preparar y enviar mensaje WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
@@ -101,7 +102,12 @@ def whatsapp_webhook():
                 "type": "text",
                 "text": {
                     "preview_url": False,
-                    "body": f"{link}"
+                    "body": (
+                        "✅ Gracias por participar en las *Primarias Bolivia 2025*.\n\n"
+                        "🔗 Aquí tienes tu enlace único y seguro para emitir tu voto (válido por 10 minutos):\n"
+                        f"{link}\n\n"
+                        "⚠️ Por favor, no compartas este enlace. Solo puedes votar una vez."
+                    )
                 }
             }
 
@@ -115,6 +121,7 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 # ---------------------------
