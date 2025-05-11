@@ -89,7 +89,16 @@ def whatsapp_webhook():
                 dominio = request.host_url.rstrip('/')
             link = f"{dominio}/votar?token={token}"
 
-            # Preparar y enviar mensaje WhatsApp
+            # Preparar mensaje personalizado y profesional
+            mensaje = (
+                "🇧🇴 Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
+                "🗳️ Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
+                f"🔗 Aquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}\n\n"
+                "⚠️ Este enlace es personal e intransferible. Solo se permite un voto por persona.\n\n"
+                "Gracias por ser parte del cambio que Bolivia necesita."
+            )
+
+            # Enviar por WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
@@ -102,12 +111,7 @@ def whatsapp_webhook():
                 "type": "text",
                 "text": {
                     "preview_url": False,
-                    "body": (
-                        "✅ Gracias por participar en las *Primarias Bolivia 2025*.\n\n"
-                        "🔗 Aquí tienes tu enlace único y seguro para emitir tu voto (válido por 10 minutos):\n"
-                        f"{link}\n\n"
-                        "⚠️ Por favor, no compartas este enlace. Solo puedes votar una vez."
-                    )
+                    "body": mensaje
                 }
             }
 
@@ -121,6 +125,7 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 
