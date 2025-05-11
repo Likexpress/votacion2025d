@@ -10,7 +10,7 @@ import json
 
 
 # ---------------------------
-# Configuración inicial este sirve
+# Configuración inicial este sirve 2
 # ---------------------------
 load_dotenv()  # Solo tiene efecto localmente, en Azure se usan variables del entorno
 
@@ -153,8 +153,7 @@ def generar_link():
             db.session.add(NumeroTemporal(numero=numero_completo))
             db.session.commit()
 
-        return redirect("https://wa.me/59172902813?text=Quiero%20votar")
-
+        return redirect("https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia.")
     return render_template("generar_link.html", paises=PAISES_CODIGOS)
 
 # ---------------------------
