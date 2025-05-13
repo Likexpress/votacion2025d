@@ -10,7 +10,7 @@ import json
 
 
 # ---------------------------
-# Configuración inicial este sirve 23
+# Configuración inicial este sirve 234
 # ---------------------------
 load_dotenv()  # Solo tiene efecto localmente, en Azure se usan variables del entorno
 
