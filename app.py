@@ -233,7 +233,7 @@ def enviar_voto():
     return render_template("voto_exitoso.html",
                            candidato=candidato,
                            numero=numero,
-                           ci=ci,
+                           ci=ci or "",
                            dia=dia,
                            mes=mes,
                            anio=anio,
