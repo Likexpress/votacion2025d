@@ -10,7 +10,7 @@ import json
 
 
 # ---------------------------
-# Configuración inicial este sirve 2
+# Configuración inicial este sirve 3
 # ---------------------------
 load_dotenv()  # Solo tiene efecto localmente, en Azure se usan variables del entorno
 
@@ -192,7 +192,7 @@ def votar():
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
     numero = request.form.get('numero')
-    ci = request.form.get('ci')
+    ci = request.form.get('ci')  # puede venir como None o cadena vacía
     candidato = request.form.get('candidato')
     pais = request.form.get('pais')
     ciudad = request.form.get('ciudad')
@@ -202,12 +202,18 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    if not all([numero, ci, candidato, pais, ciudad, dia, mes, anio]):
+    # ✅ Verificamos solo los campos obligatorios
+    if not all([numero, candidato, pais, ciudad, dia, mes, anio]):
         return "Faltan campos obligatorios."
 
-    ci = int(ci)
+    # ✅ Convertir CI si está presente, si no, dejarlo como None
+    try:
+        ci = int(ci) if ci else None
+    except ValueError:
+        ci = None
 
-    if Voto.query.filter((Voto.numero == numero) | (Voto.ci == ci)).first():
+    # ✅ Solo verificamos duplicado por número, no por CI
+    if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
     nuevo_voto = Voto(
@@ -233,6 +239,7 @@ def enviar_voto():
                            anio=anio,
                            ciudad=ciudad,
                            pais=pais)
+
 
 # ---------------------------
 # Página de preguntas frecuentes
