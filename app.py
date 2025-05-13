@@ -33,7 +33,8 @@ migrate = Migrate(app, db)
 class Voto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     numero = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    ci = db.Column(db.BigInteger, unique=True, nullable=False, index=True)
+    ci = db.Column(db.BigInteger, unique=True, nullable=True, index=True)
+
     candidato = db.Column(db.String(100), nullable=False)
     pais = db.Column(db.String(100), nullable=False)
     ciudad = db.Column(db.String(100), nullable=False)
