@@ -33,7 +33,9 @@
     <div class="detalle text-start">
       <p><strong>Candidato elegido:</strong> {{ candidato }}</p>
       <p><strong>Número de WhatsApp:</strong> {{ numero }}</p>
-      <p><strong>Carnet de Identidad:</strong> {{ ci }}</p>
+      {% if ci %}
+        <p><strong>Carnet de Identidad:</strong> {{ ci }}</p>
+      {% endif %}
       <p><strong>Fecha de Nacimiento:</strong> {{ dia }}/{{ mes }}/{{ anio }}</p>
       <p><strong>Ubicación:</strong> {{ ciudad }}, {{ pais }}</p>
     </div>
