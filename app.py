@@ -7,10 +7,11 @@ import os
 import requests
 from flask_migrate import Migrate
 import json
+from paises import PAISES_CODIGOS
 
 
 # ---------------------------
-# Configuración inicial este sirve 234
+# Configuración inicial este sirve 23
 # ---------------------------
 load_dotenv()  # Solo tiene efecto localmente, en Azure se usan variables del entorno
 
@@ -244,9 +245,7 @@ def preguntas_frecuentes():
 # ---------------------------
 # Lista de países
 # ---------------------------
-PAISES_CODIGOS = {
-    "Bolivia": "+591"
-}
+
 
 # ---------------------------
 # Ejecutar localmente
