@@ -84,7 +84,8 @@
 
       <div class="mb-3 text-start">
         <label for="numero" class="form-label">Número de WhatsApp</label>
-        <input type="text" name="numero" id="numero" class="form-control" placeholder="Ej: 70000000" required>
+        <input type="tel" name="numero" id="numero" class="form-control" placeholder="Ej: 70000000" required pattern="^\d{8,11}$" maxlength="11" inputmode="numeric">
+        <div class="form-text">Debe contener solo números (8 a 11 dígitos).</div>
       </div>
 
       <button id="submitBtn" type="submit" class="btn btn-success w-100">
@@ -113,6 +114,11 @@
     form.addEventListener("submit", function () {
       submitBtn.disabled = true;
       submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando...`;
+    });
+
+    // Validación para que solo se ingresen números en el input
+    document.getElementById("numero").addEventListener("input", function () {
+      this.value = this.value.replace(/\D/g, '');
     });
   </script>
 </body>
