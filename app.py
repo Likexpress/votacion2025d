@@ -1,125 +1,303 @@
-from flask import Flask, request, render_template, redirect
-from flask_sqlalchemy import SQLAlchemy
-from itsdangerous import URLSafeTimedSerializer
-from datetime import datetime
-from dotenv import load_dotenv
-import os
-from flask_migrate import Migrate
-from paises import PAISES_CODIGOS
+<!-- Pantalla de carga -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Elecciones Ciudadanas 2025</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-# ---------------------------
-# Configuración inicial
-# ---------------------------
-load_dotenv()
+  <style>
+    body {
+      background-color: #f4f6f9;
+    }
+    .form-wrapper {
+      max-width: 950px;
+      margin: auto;
+      padding: 20px;
+    }
+    .logo {
+      max-width: 100px;
+      display: block;
+      margin: 0 auto 10px;
+    }
+    .subtitle {
+      font-size: 1.1rem;
+      color: #6c757d;
+    }
+    .card {
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.06);
+    }
+    .candidato-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .candidato-card {
+      background: #fff;
+      padding: 10px 15px;
+      border-radius: 10px;
+      border: 1px solid #dee2e6;
+      display: flex;
+      align-items: center;
+      transition: box-shadow 0.2s ease-in-out;
+    }
+    .candidato-card:hover {
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .candidato-card img {
+      width: 55px;
+      height: 55px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-right: 15px;
+      border: 1px solid #ccc;
+    }
+    .resumen {
+      background-color: #fff;
+      padding: 20px;
+      margin-top: 25px;
+      border-left: 4px solid #198754;
+      border-radius: 6px;
+    }
+    #loader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: white;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    #loader img {
+      width: 100px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Pantalla de carga -->
+  <div id="loader">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Cargando">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="mt-2">Cargando...</p>
+  </div>
 
-app = Flask(__name__)
-SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
-serializer = URLSafeTimedSerializer(SECRET_KEY)
+  <div class="form-wrapper">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo">
+    <h2 class="text-center">Votaciones Primarias Bolivia 2025</h2>
+    <p class="text-center subtitle mb-4">Participa en las votaciones primarias y elige al candidato de oposición que nos representará en las elecciones 2025. Tu voz cuenta, tu voto decide el futuro de Bolivia.</p>
 
-# ---------------------------
-# Configuración de base de datos
-# ---------------------------
-db_url = os.environ.get("DATABASE_URL", "sqlite:///votos.db")
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
+    <div class="card p-4">
+      <form method="post" action="/enviar_voto" class="needs-validation" novalidate onsubmit="mostrarResumen(); bloquearBoton(); return true;">
+        <input type="hidden" name="numero" value="{{ numero }}">
+        <input type="hidden" id="latitud" name="latitud">
+        <input type="hidden" id="longitud" name="longitud">
+        <input type="hidden" id="recaptcha_token" name="recaptcha_token">
 
-# ---------------------------
-# Modelos
-# ---------------------------
-class Voto(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    ci = db.Column(db.BigInteger, unique=True, nullable=False, index=True)
-    candidato = db.Column(db.String(100), nullable=False)
-    pais = db.Column(db.String(100), nullable=False)
-    ciudad = db.Column(db.String(100), nullable=False)
-    dia_nacimiento = db.Column(db.Integer, nullable=False)
-    mes_nacimiento = db.Column(db.Integer, nullable=False)
-    anio_nacimiento = db.Column(db.Integer, nullable=False)
-    latitud = db.Column(db.Float, nullable=True)
-    longitud = db.Column(db.Float, nullable=True)
-    ip = db.Column(db.String(50), nullable=False)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+        <!-- Carnet -->
+        <div class="mb-3">
+          <label for="ci" class="form-label">Número de Carnet de Identidad:</label>
+          <input type="number" id="ci" name="ci" class="form-control" required>
+          <div class="invalid-feedback">Por favor, introduce tu número de carnet.</div>
+        </div>
 
-# ---------------------------
-# Crear tablas si no existen
-# ---------------------------
-with app.app_context():
-    db.create_all()
+        <!-- Fecha -->
+        <div class="mb-3">
+          <label class="form-label">Fecha de nacimiento:</label>
+          <div class="row g-2">
+            <div class="col">
+              <select class="form-select" name="dia_nacimiento" required>
+                <option value="">Día</option>
+                {% for dia in range(1, 32) %}
+                <option value="{{ dia }}">{{ dia }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col">
+              <select class="form-select" name="mes_nacimiento" required>
+                <option value="">Mes</option>
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+            </div>
+            <div class="col">
+              <select class="form-select" name="anio_nacimiento" required>
+                <option value="">Año</option>
+                {% for anio in range(1920, 2010) %}
+                <option value="{{ anio }}">{{ anio }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
 
-# ---------------------------
-# Página principal
-# ---------------------------
-@app.route('/')
-def index():
-    return render_template("votar.html", numero="+000000000")
+        <!-- País y Ciudad -->
+        <div class="mb-3">
+          <label for="pais" class="form-label">País:</label>
+          <select id="pais" name="pais" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label for="ciudad" class="form-label">Ciudad:</label>
+          <select id="ciudad" name="ciudad" class="form-select" required></select>
+        </div>
 
-# ---------------------------
-# Página de votación (sin token ni validación)
-# ---------------------------
-@app.route('/votar')
-def votar():
-    return render_template("votar.html", numero="+000000000")
+        <!-- Candidatos -->
+        <div class="mb-4">
+          <label class="form-label mb-2">Selecciona tu candidato:</label>
+          <div class="candidato-grid">
+            {% for candidato in [
+              'Jaime Dunn',
+              'Jorge Tuto Quiroga',
+              'Manfred Reyes Villa',
+              'Paulo Rodriguez Folster',
+              'Rodrigo Paz Pereira',
+              'Samuel Doria Medina'
+            ] %}
+            <label class="candidato-card">
+              <input class="form-check-input me-2" type="radio" name="candidato" value="{{ candidato }}" required>
+              <img src="{{ url_for('static', filename='img/' + candidato|lower|replace(' ', '-') + '.png') }}" alt="{{ candidato }}">
+              <span>{{ candidato }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
 
-# ---------------------------
-# Enviar voto
-# ---------------------------
-@app.route('/enviar_voto', methods=['POST'])
-def enviar_voto():
-    numero = request.form.get('numero')
-    ci = request.form.get('ci')
-    candidato = request.form.get('candidato')
-    pais = request.form.get('pais')
-    ciudad = request.form.get('ciudad')
-    dia = request.form.get('dia_nacimiento')
-    mes = request.form.get('mes_nacimiento')
-    anio = request.form.get('anio_nacimiento')
+        <!-- Botón -->
+        <div class="d-grid">
+          <button type="submit" class="btn btn-primary btn-lg">Enviar Voto</button>
+        </div>
+      </form>
+    </div>
 
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+    <!-- Resumen -->
+    <div id="resumenDatos" class="resumen d-none">
+      <h5 class="text-success">Resumen de tus datos:</h5>
+      <ul class="list-unstyled mb-0">
+        <li><strong>CI:</strong> <span id="res_ci"></span></li>
+        <li><strong>Fecha de Nacimiento:</strong> <span id="res_fecha"></span></li>
+        <li><strong>País:</strong> <span id="res_pais"></span></li>
+        <li><strong>Ciudad:</strong> <span id="res_ciudad"></span></li>
+        <li><strong>Candidato:</strong> <span id="res_candidato"></span></li>
+        <li><strong>Latitud:</strong> <span id="res_lat"></span></li>
+        <li><strong>Longitud:</strong> <span id="res_long"></span></li>
+      </ul>
+    </div>
+  </div>
 
-    if not all([numero, ci, candidato, pais, ciudad, dia, mes, anio]):
-        return "Faltan campos obligatorios."
+  <!-- Scripts -->
+  <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
+  <script>
+    window.addEventListener("load", () => {
+      document.getElementById("loader").style.display = "none";
+    });
 
-    ci = int(ci)
+    grecaptcha.ready(function() {
+      grecaptcha.execute('{{ recaptcha_site_key }}', {action: 'submit'}).then(function(token) {
+        document.getElementById('recaptcha_token').value = token;
+      });
+    });
 
-    if Voto.query.filter((Voto.numero == numero) | (Voto.ci == ci)).first():
-        return render_template("voto_ya_registrado.html")
+    async function cargarPaises() {
+      const res = await fetch("https://countriesnow.space/api/v0.1/countries");
+      const data = await res.json();
+      const selectPais = $('#pais');
+      let paisPorDefecto = "Bolivia";
 
-    nuevo_voto = Voto(
-        numero=numero,
-        ci=ci,
-        candidato=candidato,
-        pais=pais,
-        ciudad=ciudad,
-        dia_nacimiento=int(dia),
-        mes_nacimiento=int(mes),
-        anio_nacimiento=int(anio),
-        ip=ip
-    )
-    db.session.add(nuevo_voto)
-    db.session.commit()
+      data.data.forEach(p => {
+        const option = new Option(p.country, p.country);
+        if (p.country === paisPorDefecto) option.selected = true;
+        selectPais.append(option);
+      });
 
-    return render_template("voto_exitoso.html",
-                           candidato=candidato,
-                           numero=numero,
-                           ci=ci,
-                           dia=dia,
-                           mes=mes,
-                           anio=anio,
-                           ciudad=ciudad,
-                           pais=pais)
+      await cargarCiudades(paisPorDefecto);
+      selectPais.on('change', e => cargarCiudades(e.target.value));
+    }
 
-# ---------------------------
-# Página de preguntas frecuentes
-# ---------------------------
-@app.route('/preguntas')
-def preguntas_frecuentes():
-    return render_template("preguntas.html")
+    async function cargarCiudades(pais) {
+      const selectCiudad = $('#ciudad');
+      selectCiudad.empty().append(new Option("Cargando...", ""));
+      const res = await fetch("https://countriesnow.space/api/v0.1/countries/cities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ country: pais })
+      });
+      const data = await res.json();
+      selectCiudad.empty().append(new Option("Seleccione una ciudad", ""));
+      data.data.forEach(c => selectCiudad.append(new Option(c, c)));
+    }
 
-# ---------------------------
-# Ejecutar localmente
-# ---------------------------
-if __name__ == '__main__':
-    app.run(debug=True)
+    function obtenerGeolocalizacion() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          $('#latitud').val(pos.coords.latitude);
+          $('#longitud').val(pos.coords.longitude);
+        });
+      }
+    }
+
+    function mostrarResumen() {
+      document.getElementById('res_ci').textContent = document.getElementById('ci').value;
+      document.getElementById('res_fecha').textContent =
+        document.querySelector('[name="dia_nacimiento"]').value + "/" +
+        document.querySelector('[name="mes_nacimiento"]').value + "/" +
+        document.querySelector('[name="anio_nacimiento"]').value;
+      document.getElementById('res_pais').textContent = document.getElementById('pais').value;
+      document.getElementById('res_ciudad').textContent = document.getElementById('ciudad').value;
+      document.getElementById('res_candidato').textContent = document.querySelector('[name="candidato"]:checked').value;
+      document.getElementById('res_lat').textContent = document.getElementById('latitud').value;
+      document.getElementById('res_long').textContent = document.getElementById('longitud').value;
+      document.getElementById('resumenDatos').classList.remove('d-none');
+    }
+
+    function bloquearBoton() {
+      const btn = document.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Enviando...';
+    }
+
+    $(document).ready(() => {
+      $('#pais').select2({ placeholder: "Seleccione un país", width: '100%' });
+      $('#ciudad').select2({ placeholder: "Seleccione una ciudad", width: '100%' });
+      cargarPaises();
+      obtenerGeolocalizacion();
+
+      (() => {
+        'use strict';
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(form => {
+          form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+          }, false);
+        });
+      })();
+    });
+  </script>
+
+  <footer class="text-center text-muted mt-5 pb-4">
+    <hr>
+    <p class="mb-1">&copy; 2025 <strong>Primarias Bunker</strong></p>
+    <small>Participación ciudadana por un futuro democrático</small>
+  </footer>
+</body>
+</html>
