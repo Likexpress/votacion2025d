@@ -1,15 +1,18 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 from datetime import datetime
 import os
 
+# Cargar variables de entorno
 load_dotenv()
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///votos.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# Modelo de la base de datos
 class Voto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     numero = db.Column(db.String(50), nullable=False)
@@ -25,10 +28,17 @@ class Voto(db.Model):
     ip = db.Column(db.String(50), nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
+# Redireccionar raíz al formulario directamente
+@app.route('/')
+def index():
+    return redirect('/votar')
+
+# Formulario de votación
 @app.route('/votar')
 def votar():
     return render_template("votar.html", numero="+000000000")
 
+# Procesar voto
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
     numero = request.form.get('numero', '')
@@ -45,7 +55,7 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Si el número es +000000000 no registra nada, solo muestra éxito
+    # Permitir múltiples votos para +000000000 (modo demo o pruebas)
     if numero == "+000000000":
         return render_template("voto_exitoso.html",
                                candidato=candidato,
@@ -57,10 +67,11 @@ def enviar_voto():
                                ciudad=ciudad,
                                pais=pais)
 
-    # Para otros números, se registra solo si no votaron antes con ese número
+    # Evitar múltiples votos por el mismo número (excepto el +000000000)
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # Registrar nuevo voto
     nuevo_voto = Voto(
         numero=numero,
         ci=int(ci),
@@ -85,6 +96,7 @@ def enviar_voto():
                            ciudad=ciudad,
                            pais=pais)
 
+# Crear tablas y ejecutar app
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
