@@ -81,6 +81,12 @@
     <h3><strong>¡Bienvenido a las Votaciones Primarias 2025!</strong></h3>
     <p class="text-muted">Para comenzar, selecciona tu país e ingresa tu número de WhatsApp. Recuerda que solo puedes votar una vez por número.</p>
 
+    <!-- Aviso importante -->
+    <div class="alert alert-warning text-start" role="alert">
+      <strong>Importante:</strong> El número que ingreses aquí debe ser exactamente el mismo desde el cual escribirás "Votar" por WhatsApp. 
+      Si los números no coinciden, no recibirás tu enlace.
+    </div>
+
     <form method="POST">
       <div class="mb-3 text-start">
         <label for="pais" class="form-label">País</label>
@@ -96,7 +102,7 @@
         <label for="numero" class="form-label">Número de WhatsApp</label>
         <input type="tel" name="numero" id="numero" class="form-control" placeholder="Ej: 70000000"
                required pattern="^\d{8,11}$" maxlength="11" inputmode="numeric">
-        <div class="form-text">Debe contener solo números (8 a 11 dígitos).</div>
+        <div class="form-text">Debe contener solo números (8 a 11 dígitos). No incluyas espacios ni guiones.</div>
       </div>
 
       <button id="submitBtn" type="submit" class="btn btn-success w-100">
