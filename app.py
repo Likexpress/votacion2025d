@@ -9,11 +9,10 @@ from flask_migrate import Migrate
 import json
 from paises import PAISES_CODIGOS
 
-
 # ---------------------------
-# Configuración inicial este sirve 23
+# Configuración inicial
 # ---------------------------
-load_dotenv()  # Solo tiene efecto localmente, en Azure se usan variables del entorno
+load_dotenv()
 
 app = Flask(__name__)
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
@@ -51,7 +50,6 @@ class NumeroTemporal(db.Model):
     numero = db.Column(db.String(50), unique=True, nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
-# ⚠️ SOLO PARA DESARROLLO: En producción usar migraciones
 with app.app_context():
     db.create_all()
 
@@ -78,19 +76,21 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
-            # Guardar número si no está ya en tabla temporal
             if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
                 db.session.add(NumeroTemporal(numero=numero_completo))
                 db.session.commit()
 
-            # Generar token y link de votación
-            token = serializer.dumps(numero_completo)
+            token_data = {
+                "numero": numero_completo,
+                "dominio": "sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net"
+            }
+            token = serializer.dumps(token_data)
+
             dominio = os.environ.get("AZURE_DOMAIN")
             if not dominio:
                 dominio = request.host_url.rstrip('/')
             link = f"{dominio}/votar?token={token}"
 
-            # Preparar mensaje personalizado y profesional
             mensaje = (
                 "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
                 "Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
@@ -99,8 +99,6 @@ def whatsapp_webhook():
                 "Gracias por ser parte del cambio que Bolivia necesita."
             )
 
-
-            # Enviar por WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
@@ -127,9 +125,6 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
-
-
-
 
 # ---------------------------
 # Página principal
@@ -173,17 +168,24 @@ def votar():
         return "Acceso no válido."
 
     try:
-        numero = serializer.loads(token, max_age=600)  # 10 minutos
+        data = serializer.loads(token, max_age=600)
+        numero = data.get("numero")
+        dominio_token = data.get("dominio")
+        dominio_esperado = "sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net"
+
+        if dominio_token != dominio_esperado:
+            return "Dominio inválido para este enlace."
+
     except SignatureExpired:
         return "El enlace ha expirado. Solicita uno nuevo."
     except BadSignature:
         return "Enlace inválido o alterado."
 
-    if not NumeroTemporal.query.filter_by(numero=numero).first():
-        return "Este enlace no fue solicitado correctamente."
-
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
+
+    if not NumeroTemporal.query.filter_by(numero=numero).first():
+        return "Este enlace ya fue utilizado o no es válido."
 
     return render_template("votar.html", numero=numero)
 
@@ -223,6 +225,9 @@ def enviar_voto():
         ip=ip
     )
     db.session.add(nuevo_voto)
+
+    # 🔒 Eliminar token usado
+    NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
     return render_template("voto_exitoso.html",
@@ -241,11 +246,6 @@ def enviar_voto():
 @app.route('/preguntas')
 def preguntas_frecuentes():
     return render_template("preguntas.html")
-
-# ---------------------------
-# Lista de países
-# ---------------------------
-
 
 # ---------------------------
 # Ejecutar localmente
