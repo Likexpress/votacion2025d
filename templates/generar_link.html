@@ -7,11 +7,12 @@
 
   <!-- Estilos -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
   <!-- Meta Description -->
   <meta name="description" content="Vota en las Primarias Bolivia 2025. Tu voz define el futuro.">
 
-  <!-- Open Graph para miniatura en WhatsApp y redes sociales -->
+  <!-- Open Graph para redes sociales -->
   <meta property="og:title" content="Elecciones Ciudadanas 2025" />
   <meta property="og:description" content="Participa en las Primarias y elige al candidato de oposición que representará a Bolivia." />
   <meta property="og:image" content="https://sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net/static/img/og-image.jpg" />
@@ -62,6 +63,13 @@
       50% { transform: scale(1.1); opacity: 0.8; }
       100% { transform: scale(1); opacity: 1; }
     }
+    .select2-container--default .select2-selection--single {
+      height: 38px;
+      padding: 6px 12px;
+    }
+    .tutorial-buttons a {
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -86,7 +94,7 @@
       <strong>Importante para recibir tu enlace:</strong><br>
       El número que ingreses aquí debe ser <strong>exactamente el mismo</strong> desde el cual escribirás el mensaje por WhatsApp.  
       Si los números no coinciden, <strong>no se podrá generar tu enlace de votación</strong> por motivos de seguridad.<br><br>
-      🗳️ Este proceso forma parte de un sistema <strong>transparente, seguro y ciudadano</strong>, donde cada voto cuenta de verdad.  
+      Este proceso forma parte de un sistema <strong>transparente, seguro y ciudadano</strong>, donde cada voto cuenta de verdad.  
       Tu participación no solo es un derecho: es una señal de esperanza, compromiso y cambio para Bolivia.
     </div>
 
@@ -113,15 +121,10 @@
       </button>
     </form>
 
-    <!-- Botones de ayuda para votar -->
-    <div class="mt-4">
-      <p class="text-muted"><strong>¿Necesitas ayuda para votar?</strong> Mira estos breves tutoriales:</p>
-      <a href="https://www.youtube.com/watch?v=ENLACE_TELEFONO" target="_blank" class="btn btn-outline-primary w-100 mb-2">
-        📱 Cómo votar desde tu teléfono
-      </a>
-      <a href="https://www.youtube.com/watch?v=ENLACE_COMPUTADORA" target="_blank" class="btn btn-outline-primary w-100">
-        💻 Cómo votar desde tu computadora
-      </a>
+    <!-- Botones de tutorial -->
+    <div class="tutorial-buttons mt-4">
+      <a href="https://www.youtube.com/watch?v=VIDEO_ID_TELEFONO" target="_blank" class="btn btn-outline-primary w-100">📱 Cómo votar desde tu teléfono</a>
+      <a href="https://www.youtube.com/watch?v=VIDEO_ID_PC" target="_blank" class="btn btn-outline-primary w-100">💻 Cómo votar desde tu computadora</a>
     </div>
 
     <a href="{{ url_for('preguntas_frecuentes') }}" class="btn btn-outline-secondary mt-3 w-100">Preguntas Frecuentes</a>
@@ -132,6 +135,9 @@
     <small>Participación ciudadana por un futuro democrático</small>
   </footer>
 
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <script>
     // Ocultar pantalla de carga
     window.addEventListener('load', function () {
@@ -150,6 +156,15 @@
     // Solo permitir números en el campo número
     document.getElementById("numero").addEventListener("input", function () {
       this.value = this.value.replace(/\D/g, '');
+    });
+
+    // Activar Select2
+    document.addEventListener('DOMContentLoaded', function () {
+      const select = document.getElementById('pais');
+      $(select).select2({
+        theme: "bootstrap-5",
+        placeholder: "Selecciona un país"
+      });
     });
   </script>
 </body>
