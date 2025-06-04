@@ -81,16 +81,14 @@
     <h3><strong>¡Bienvenido a las Votaciones Primarias 2025!</strong></h3>
     <p class="text-muted">Para comenzar, selecciona tu país e ingresa tu número de WhatsApp. Recuerda que solo puedes votar una vez por número.</p>
 
-
     <!-- Aviso importante -->
     <div class="alert alert-warning text-start" role="alert">
       <strong>Importante para recibir tu enlace:</strong><br>
       El número que ingreses aquí debe ser <strong>exactamente el mismo</strong> desde el cual escribirás el mensaje por WhatsApp.  
       Si los números no coinciden, <strong>no se podrá generar tu enlace de votación</strong> por motivos de seguridad.<br><br>
-      Este proceso forma parte de un sistema <strong>transparente, seguro y ciudadano</strong>, donde cada voto cuenta de verdad.  
+      🗳️ Este proceso forma parte de un sistema <strong>transparente, seguro y ciudadano</strong>, donde cada voto cuenta de verdad.  
       Tu participación no solo es un derecho: es una señal de esperanza, compromiso y cambio para Bolivia.
     </div>
-
 
     <form method="POST">
       <div class="mb-3 text-start">
@@ -115,21 +113,18 @@
       </button>
     </form>
 
-
-    <a href="{{ url_for('preguntas_frecuentes') }}" class="btn btn-outline-secondary mt-3 w-100">Preguntas Frecuentes</a>
-
     <!-- Botones de ayuda para votar -->
     <div class="mt-4">
       <p class="text-muted"><strong>¿Necesitas ayuda para votar?</strong> Mira estos breves tutoriales:</p>
-      <div class="d-grid gap-2">
-        <a href="https://www.youtube.com/watch?v=ENLACE_TELEFONO" target="_blank" class="btn btn-outline-primary">
-          📱 Cómo votar desde tu teléfono
-        </a>
-        <a href="https://www.youtube.com/watch?v=ENLACE_COMPUTADORA" target="_blank" class="btn btn-outline-primary">
-          💻 Cómo votar desde tu computadora
-        </a>
-      </div>
+      <a href="https://www.youtube.com/watch?v=ENLACE_TELEFONO" target="_blank" class="btn btn-outline-primary w-100 mb-2">
+        📱 Cómo votar desde tu teléfono
+      </a>
+      <a href="https://www.youtube.com/watch?v=ENLACE_COMPUTADORA" target="_blank" class="btn btn-outline-primary w-100">
+        💻 Cómo votar desde tu computadora
+      </a>
     </div>
+
+    <a href="{{ url_for('preguntas_frecuentes') }}" class="btn btn-outline-secondary mt-3 w-100">Preguntas Frecuentes</a>
   </div>
 
   <footer class="mt-4">
