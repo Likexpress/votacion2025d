@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from datetime import datetime
@@ -8,9 +8,10 @@ import requests
 from flask_migrate import Migrate
 import json
 from paises import PAISES_CODIGOS
+import csv
 
 # ---------------------------
-# Configuración inicial 1
+# Configuración inicial
 # ---------------------------
 load_dotenv()
 
@@ -226,7 +227,6 @@ def enviar_voto():
     )
     db.session.add(nuevo_voto)
 
-    # 🔒 Eliminar token usado
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
@@ -239,6 +239,19 @@ def enviar_voto():
                            anio=anio,
                            ciudad=ciudad,
                            pais=pais)
+
+# ---------------------------
+# API local para obtener países y ciudades desde CSV
+# ---------------------------
+@app.route('/api/recintos', methods=['GET'])
+def api_recintos():
+    recintos_path = os.path.join(os.path.dirname(__file__), 'RecintosParaPrimaria.csv')
+    resultados = []
+    with open(recintos_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            resultados.append(row)
+    return jsonify(resultados)
 
 # ---------------------------
 # Página de preguntas frecuentes
