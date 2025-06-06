@@ -110,7 +110,9 @@
   </style>
 </head>
 <body>
-  <div class="cert-container">
+
+  <!-- CONTENEDOR DEL CERTIFICADO -->
+  <div class="cert-container" id="certificado">
     <div class="bandera">
       <div class="rojo"></div>
       <div class="amarillo"></div>
@@ -138,16 +140,37 @@
     </div>
 
     <img src="/static/img/logo.png" alt="Sello de agua" class="seal">
-
-    <div class="share-section">
-      <p>Comparte tu participación y motiva a otros:</p>
-      <a href="#" onclick="window.print()" class="btn btn-outline-secondary share-btn">🖨️ Imprimir</a>
-      <a href="#" download class="btn btn-outline-secondary share-btn">⬇️ Descargar</a>
-      <a href="https://www.facebook.com/sharer/sharer.php?u={{url}}" target="_blank" class="btn btn-outline-primary share-btn">Facebook</a>
-      <a href="https://www.instagram.com/" target="_blank" class="btn btn-outline-danger share-btn">Instagram</a>
-      <a href="https://wa.me/?text=¡Yo ya participé en las Primarias Bunker 2025! 🇧🇴%20https://primariasbunker.org" target="_blank" class="btn btn-outline-success share-btn">WhatsApp</a>
-      <a href="https://www.tiktok.com/" target="_blank" class="btn btn-outline-dark share-btn">TikTok</a>
-    </div>
   </div>
+
+  <!-- BOTONES DE COMPARTIR -->
+  <div class="share-section">
+    <p>Comparte tu participación:</p>
+    <button onclick="descargarImagen()" class="btn btn-outline-secondary share-btn">⬇️ Descargar imagen</button>
+    <button onclick="window.print()" class="btn btn-outline-secondary share-btn">🖨️ Imprimir</button>
+    <a href="#" onclick="compartirWhatsApp()" class="btn btn-outline-success share-btn">WhatsApp</a>
+    <a href="https://www.facebook.com/" target="_blank" class="btn btn-outline-primary share-btn">Facebook</a>
+    <a href="https://www.instagram.com/" target="_blank" class="btn btn-outline-danger share-btn">Instagram</a>
+    <a href="https://www.tiktok.com/" target="_blank" class="btn btn-outline-dark share-btn">TikTok</a>
+  </div>
+
+  <!-- LIBRERÍA Y SCRIPT -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    function descargarImagen() {
+      const element = document.getElementById("certificado");
+      html2canvas(element, { scale: 2 }).then(canvas => {
+        const imagen = canvas.toDataURL("image/png");
+        const enlace = document.createElement("a");
+        enlace.href = imagen;
+        enlace.download = "certificado_participacion.png";
+        enlace.click();
+      });
+    }
+
+    function compartirWhatsApp() {
+      const mensaje = encodeURIComponent("¡Yo ya participé en las Primarias Bunker 2025! 🇧🇴");
+      window.open(`https://wa.me/?text=${mensaje}`, '_blank');
+    }
+  </script>
 </body>
 </html>
