@@ -16,46 +16,34 @@
     .subtitle { font-size: 1.1rem; color: #6c757d; }
     .card { border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.06); }
     .resumen { background-color: #fff; padding: 20px; margin-top: 25px; border-left: 4px solid #198754; border-radius: 6px; }
-    .candidato-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-    .candidato-card { background: #fff; padding: 10px 15px; border-radius: 10px; border: 1px solid #dee2e6; display: flex; align-items: center; transition: box-shadow 0.2s ease-in-out; }
-    .candidato-card:hover { box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    .candidato-card img { width: 55px; height: 55px; object-fit: cover; border-radius: 50%; margin-right: 15px; border: 1px solid #ccc; }
-    #loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-    #loader img { width: 100px; margin-bottom: 20px; }
   </style>
 </head>
 <body>
-  <div id="loader">
-    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Cargando">
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="mt-2">Cargando...</p>
-  </div>
-
   <div class="form-wrapper">
     <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo">
     <h2 class="text-center">Votaciones Primarias Bolivia 2025</h2>
-    <p class="text-center subtitle mb-4">Participa en las votaciones primarias y elige al candidato de oposición que nos representará en las elecciones 2025. Tu voz cuenta, tu voto decide el futuro de Bolivia.</p>
+    <p class="text-center subtitle mb-4">Participa en las votaciones primarias y elige al candidato de oposición que nos representará en las elecciones 2025.</p>
 
     <div class="card p-4">
-      <form method="post" action="/enviar_voto" class="needs-validation" novalidate onsubmit="mostrarResumen(); bloquearBoton(); return true;">
+      <form method="post" action="/enviar_voto" class="needs-validation" novalidate>
         <input type="hidden" name="numero" value="{{ numero }}">
-        <input type="hidden" id="latitud" name="latitud">
-        <input type="hidden" id="longitud" name="longitud">
-        <input type="hidden" id="recaptcha_token" name="recaptcha_token">
 
-        <!-- CI y Fecha -->
+        <!-- CI -->
         <div class="mb-3">
-          <label for="ci" class="form-label">Número de Carnet de Identidad:</label>
+          <label for="ci" class="form-label">Carnet de Identidad</label>
           <input type="number" id="ci" name="ci" class="form-control" required>
         </div>
 
+        <!-- Fecha de nacimiento -->
         <div class="mb-3">
-          <label class="form-label">Fecha de nacimiento:</label>
+          <label class="form-label">Fecha de nacimiento</label>
           <div class="row g-2">
             <div class="col">
               <select class="form-select" name="dia_nacimiento" required>
                 <option value="">Día</option>
-                {% for dia in range(1, 32) %}<option value="{{ dia }}">{{ dia }}</option>{% endfor %}
+                {% for d in range(1, 32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="col">
@@ -69,144 +57,101 @@
             <div class="col">
               <select class="form-select" name="anio_nacimiento" required>
                 <option value="">Año</option>
-                {% for anio in range(1920, 2010) %}<option value="{{ anio }}">{{ anio }}</option>{% endfor %}
+                {% for a in range(1920, 2010) %}
+                  <option value="{{ a }}">{{ a }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
         </div>
 
-        <!-- País → Departamento → Provincia → Municipio → Recinto -->
+        <!-- Cascada de ubicación -->
         <div class="mb-3">
-          <label for="pais" class="form-label">País:</label>
+          <label class="form-label">País</label>
           <select id="pais" name="pais" class="form-select" required></select>
         </div>
         <div class="mb-3">
-          <label for="ciudad" class="form-label">Ciudad:</label>
-          <select id="ciudad" name="ciudad" class="form-select" required></select>
+          <label class="form-label">Departamento</label>
+          <select id="departamento" name="departamento" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Provincia</label>
+          <select id="provincia" name="provincia" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Municipio</label>
+          <select id="municipio" name="ciudad" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Recinto</label>
+          <select id="recinto" name="recinto" class="form-select" required></select>
         </div>
 
-        <!-- Candidatos -->
-        <div class="mb-4">
-          <label class="form-label mb-2">Selecciona tu candidato:</label>
-          <div class="candidato-grid">
-            {% for candidato in ['Jaime Dunn','Jorge Tuto Quiroga','Manfred Reyes Villa','Paulo Rodriguez Folster','Rodrigo Paz Pereira','Samuel Doria Medina'] %}
-              <label class="candidato-card">
-                <input class="form-check-input me-2" type="radio" name="candidato" value="{{ candidato }}" required>
-                <img src="{{ url_for('static', filename='img/' + candidato|lower|replace(' ', '-') + '.png') }}" alt="{{ candidato }}">
-                <span>{{ candidato }}</span>
-              </label>
+        <!-- Candidato -->
+        <div class="mb-3">
+          <label class="form-label">Candidato</label>
+          <select name="candidato" class="form-select" required>
+            <option value="">Selecciona un candidato</option>
+            {% for candidato in ['Jaime Dunn', 'Jorge Tuto Quiroga', 'Manfred Reyes Villa', 'Rodrigo Paz Pereira', 'Samuel Doria Medina'] %}
+              <option value="{{ candidato }}">{{ candidato }}</option>
             {% endfor %}
-          </div>
+          </select>
         </div>
 
+        <!-- Enviar -->
         <div class="d-grid">
-          <button type="submit" class="btn btn-primary btn-lg">Enviar Voto</button>
+          <button type="submit" class="btn btn-success btn-lg">Enviar Voto</button>
         </div>
       </form>
     </div>
-
-    <div id="resumenDatos" class="resumen d-none">
-      <h5 class="text-success">Resumen de tus datos:</h5>
-      <ul class="list-unstyled mb-0">
-        <li><strong>CI:</strong> <span id="res_ci"></span></li>
-        <li><strong>Fecha de Nacimiento:</strong> <span id="res_fecha"></span></li>
-        <li><strong>País:</strong> <span id="res_pais"></span></li>
-        <li><strong>Ciudad:</strong> <span id="res_ciudad"></span></li>
-        <li><strong>Candidato:</strong> <span id="res_candidato"></span></li>
-        <li><strong>Latitud:</strong> <span id="res_lat"></span></li>
-        <li><strong>Longitud:</strong> <span id="res_long"></span></li>
-      </ul>
-    </div>
   </div>
 
-  <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
   <script>
-    window.addEventListener("load", () => {
-      document.getElementById("loader").style.display = "none";
-    });
+    let recintosData = [];
 
-    grecaptcha.ready(() => {
-      grecaptcha.execute('{{ recaptcha_site_key }}', {action: 'submit'}).then(token => {
-        document.getElementById('recaptcha_token').value = token;
-      });
-    });
-
-    async function cargarRecintos() {
+    async function cargarDatos() {
       const res = await fetch("/api/recintos");
-      const datos = await res.json();
-      const paises = [...new Set(datos.map(d => d.nombre_pais))];
-      const selectPais = $("#pais");
-      selectPais.empty().append(new Option("Selecciona un país", ""));
-      paises.forEach(pais => {
-        const option = new Option(pais, pais);
-        if (pais === "Bolivia") option.selected = true;
-        selectPais.append(option);
-      });
+      recintosData = await res.json();
 
-      selectPais.on("change", function() {
-        const ciudades = datos.filter(d => d.nombre_pais === this.value).map(d => d.nombre_municipio);
-        const ciudadSelect = $("#ciudad");
-        ciudadSelect.empty().append(new Option("Selecciona una ciudad", ""));
-        [...new Set(ciudades)].forEach(c => ciudadSelect.append(new Option(c, c)));
-      });
-
-      selectPais.trigger("change");
+      const paises = [...new Set(recintosData.map(r => r.nombre_pais))];
+      paises.forEach(pais => $('#pais').append(new Option(pais, pais)));
+      $('#pais').val('Bolivia').trigger('change');
     }
 
-    function mostrarResumen() {
-      document.getElementById('res_ci').textContent = document.getElementById('ci').value;
-      document.getElementById('res_fecha').textContent =
-        document.querySelector('[name="dia_nacimiento"]').value + "/" +
-        document.querySelector('[name="mes_nacimiento"]').value + "/" +
-        document.querySelector('[name="anio_nacimiento"]').value;
-      document.getElementById('res_pais').textContent = document.getElementById('pais').value;
-      document.getElementById('res_ciudad').textContent = document.getElementById('ciudad').value;
-      document.getElementById('res_candidato').textContent = document.querySelector('[name="candidato"]:checked').value;
-      document.getElementById('res_lat').textContent = document.getElementById('latitud').value;
-      document.getElementById('res_long').textContent = document.getElementById('longitud').value;
-      document.getElementById('resumenDatos').classList.remove('d-none');
-    }
+    function filtrarYActualizar(origenId, destinoId, campoPadre, campoHijo) {
+      const seleccionado = $(`#${origenId}`).val();
+      const opciones = recintosData
+        .filter(r => r[campoPadre] === seleccionado)
+        .map(r => r[campoHijo]);
 
-    function bloquearBoton() {
-      const btn = document.querySelector('button[type="submit"]');
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Enviando...';
-    }
-
-    function obtenerGeolocalizacion() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          $('#latitud').val(pos.coords.latitude);
-          $('#longitud').val(pos.coords.longitude);
-        });
-      }
+      const unicos = [...new Set(opciones)];
+      const select = $(`#${destinoId}`);
+      select.empty().append(new Option(`Selecciona ${campoHijo}`, ''));
+      unicos.forEach(op => select.append(new Option(op, op)));
+      select.trigger('change');
     }
 
     $(document).ready(() => {
-      $('#pais').select2({ width: '100%' });
-      $('#ciudad').select2({ width: '100%' });
-      cargarRecintos();
-      obtenerGeolocalizacion();
+      cargarDatos();
 
-      (() => {
-        const forms = document.querySelectorAll('.needs-validation');
-        Array.from(forms).forEach(form => {
-          form.addEventListener('submit', e => {
-            if (!form.checkValidity()) {
-              e.preventDefault();
-              e.stopPropagation();
-            }
-            form.classList.add('was-validated');
-          }, false);
-        });
-      })();
+      $('#pais').select2().on('change', () => {
+        filtrarYActualizar('pais', 'departamento', 'nombre_pais', 'nombre_departamento');
+      });
+
+      $('#departamento').select2().on('change', () => {
+        filtrarYActualizar('departamento', 'provincia', 'nombre_departamento', 'nombre_provincia');
+      });
+
+      $('#provincia').select2().on('change', () => {
+        filtrarYActualizar('provincia', 'municipio', 'nombre_provincia', 'nombre_municipio');
+      });
+
+      $('#municipio').select2().on('change', () => {
+        filtrarYActualizar('municipio', 'recinto', 'nombre_municipio', 'nombre_recinto');
+      });
+
+      $('#recinto').select2();
     });
   </script>
-
-  <footer class="text-center text-muted mt-5 pb-4">
-    <hr>
-    <p class="mb-1">&copy; 2025 <strong>Primarias Bunker</strong></p>
-    <small>Participación ciudadana por un futuro democrático</small>
-  </footer>
 </body>
 </html>
