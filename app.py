@@ -33,7 +33,11 @@ migrate = Migrate(app, db)
 class Voto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     numero = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    ci = db.Column(db.BigInteger, unique=True, nullable=False, index=True)
+    ci = db.Column(db.BigInteger, nullable=True)  # Ya no es obligatorio
+    genero = db.Column(db.String(10), nullable=False)
+    pregunta1 = db.Column(db.String(10), nullable=False)
+    pregunta2 = db.Column(db.String(10), nullable=False)
+    pregunta3 = db.Column(db.String(10), nullable=False)
     candidato = db.Column(db.String(100), nullable=False)
     pais = db.Column(db.String(100), nullable=False)
     ciudad = db.Column(db.String(100), nullable=False)
@@ -45,13 +49,6 @@ class Voto(db.Model):
     ip = db.Column(db.String(50), nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
-class NumeroTemporal(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.String(50), unique=True, nullable=False)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
-
-with app.app_context():
-    db.create_all()
 
 # ---------------------------
 # Webhook para WhatsApp
@@ -195,7 +192,11 @@ def votar():
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
     numero = request.form.get('numero')
-    ci = request.form.get('ci')
+    genero = request.form.get('genero')
+    pregunta1 = request.form.get('pregunta1')
+    pregunta2 = request.form.get('pregunta2')
+    pregunta3 = request.form.get('pregunta3')
+    ci = request.form.get('ci')  # Puede ser None
     candidato = request.form.get('candidato')
     pais = request.form.get('pais')
     ciudad = request.form.get('ciudad')
@@ -205,16 +206,30 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    if not all([numero, ci, candidato, pais, ciudad, dia, mes, anio]):
+    campos_obligatorios = [numero, genero, pregunta1, pregunta2, pregunta3, candidato, pais, ciudad, dia, mes, anio]
+
+    if pregunta3 == "Sí":
+        if not ci:
+            return "Debe ingresar el Carnet de Identidad si desea colaborar en el control del voto."
+        try:
+            ci = int(ci)
+        except ValueError:
+            return "El Carnet de Identidad no es válido."
+    else:
+        ci = None  # No se guarda si no respondió 'Sí'
+
+    if not all(campos_obligatorios):
         return "Faltan campos obligatorios."
 
-    ci = int(ci)
-
-    if Voto.query.filter((Voto.numero == numero) | (Voto.ci == ci)).first():
+    if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
     nuevo_voto = Voto(
         numero=numero,
+        genero=genero,
+        pregunta1=pregunta1,
+        pregunta2=pregunta2,
+        pregunta3=pregunta3,
         ci=ci,
         candidato=candidato,
         pais=pais,
@@ -224,6 +239,7 @@ def enviar_voto():
         anio_nacimiento=int(anio),
         ip=ip
     )
+
     db.session.add(nuevo_voto)
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
@@ -232,11 +248,13 @@ def enviar_voto():
                            candidato=candidato,
                            numero=numero,
                            ci=ci,
+                           genero=genero,
                            dia=dia,
                            mes=mes,
                            anio=anio,
                            ciudad=ciudad,
                            pais=pais)
+
 
 # ---------------------------
 # API local desde CSV
