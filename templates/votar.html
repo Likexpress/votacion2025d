@@ -1,13 +1,3 @@
-Aquí tienes el código HTML completo y actualizado del formulario `votar.html` con las siguientes características implementadas:
-
-* Se eliminó el campo "Carnet de Identidad" principal.
-* Se agregó la pregunta de género (Hombre/Mujer).
-* Se agregaron tres preguntas tipo sí/no.
-* En la pregunta 3, si el usuario responde "Sí", se despliega un campo obligatorio para el CI.
-* Todos los campos son obligatorios.
-* Se conserva la cascada de selección basada en el archivo `RecintosParaPrimaria.csv`.
-
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -51,7 +41,9 @@ Aquí tienes el código HTML completo y actualizado del formulario `votar.html` 
             <div class="col">
               <select class="form-select" name="dia_nacimiento" required>
                 <option value="">Día</option>
-                {% for d in range(1, 32) %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                {% for d in range(1, 32) %}
+                  <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="col">
@@ -65,7 +57,9 @@ Aquí tienes el código HTML completo y actualizado del formulario `votar.html` 
             <div class="col">
               <select class="form-select" name="anio_nacimiento" required>
                 <option value="">Año</option>
-                {% for a in range(1920, 2010) %}<option value="{{ a }}">{{ a }}</option>{% endfor %}
+                {% for a in range(1920, 2010) %}
+                  <option value="{{ a }}">{{ a }}</option>
+                {% endfor %}
               </select>
             </div>
           </div>
@@ -103,7 +97,7 @@ Aquí tienes el código HTML completo y actualizado del formulario `votar.html` 
           </select>
         </div>
 
-        <!-- Candidatos -->
+        <!-- Candidato -->
         <div class="mb-3">
           <label class="form-label">Candidatos propuestos</label>
           <select name="candidato" class="form-select" required>
@@ -124,7 +118,7 @@ Aquí tienes el código HTML completo y actualizado del formulario `votar.html` 
           </select>
         </div>
 
-        <!-- Pregunta 3 + campo dinámico CI -->
+        <!-- Pregunta 3 -->
         <div class="mb-3">
           <label class="form-label">¿Estás dispuesto(a) a colaborar en el control del voto para prevenir posibles fraudes electorales?</label>
           <select id="pregunta3" name="pregunta3" class="form-select" required onchange="mostrarCampoCI(this)">
@@ -133,12 +127,13 @@ Aquí tienes el código HTML completo y actualizado del formulario `votar.html` 
             <option value="No">No</option>
           </select>
         </div>
+
+        <!-- Campo CI (condicional) -->
         <div class="mb-3 hidden" id="campo_ci">
           <label for="ci" class="form-label">Carnet de Identidad</label>
           <input type="number" id="ci" name="ci" class="form-control">
         </div>
 
-        <!-- Enviar -->
         <div class="d-grid">
           <button type="submit" class="btn btn-success btn-lg">Enviar Voto</button>
         </div>
@@ -158,15 +153,54 @@ Aquí tienes el código HTML completo y actualizado del formulario `votar.html` 
       $('#pais').val('Bolivia').trigger('change');
     }
 
-    function filtrarYActualizar(origen, destino, campoFiltro, campoValor, campoDestino) {
-      const valor = $(`#${origen}`).val();
-      const opciones = recintosData
-        .filter(r => r[campoFiltro] === valor)
-        .map(r => r[campoDestino]);
-      const unicos = [...new Set(opciones)];
-      const select = $(`#${destino}`);
-      select.empty().append(new Option(`Selecciona ${campoDestino}`, ''));
-      unicos.forEach(op => select.append(new Option(op, op)));
+    function actualizarDepartamentos() {
+      const pais = $('#pais').val();
+      const departamentos = [...new Set(recintosData.filter(r => r.nombre_pais === pais).map(r => r.nombre_departamento))];
+      const select = $('#departamento');
+      select.empty().append(new Option('Selecciona departamento', ''));
+      departamentos.forEach(dep => select.append(new Option(dep, dep)));
+      select.trigger('change');
+    }
+
+    function actualizarProvincias() {
+      const pais = $('#pais').val();
+      const departamento = $('#departamento').val();
+      const provincias = [...new Set(recintosData.filter(r => r.nombre_pais === pais && r.nombre_departamento === departamento).map(r => r.nombre_provincia))];
+      const select = $('#provincia');
+      select.empty().append(new Option('Selecciona provincia', ''));
+      provincias.forEach(prov => select.append(new Option(prov, prov)));
+      select.trigger('change');
+    }
+
+    function actualizarMunicipios() {
+      const pais = $('#pais').val();
+      const departamento = $('#departamento').val();
+      const provincia = $('#provincia').val();
+      const municipios = [...new Set(recintosData.filter(r =>
+        r.nombre_pais === pais &&
+        r.nombre_departamento === departamento &&
+        r.nombre_provincia === provincia
+      ).map(r => r.nombre_municipio))];
+      const select = $('#municipio');
+      select.empty().append(new Option('Selecciona municipio', ''));
+      municipios.forEach(m => select.append(new Option(m, m)));
+      select.trigger('change');
+    }
+
+    function actualizarRecintos() {
+      const pais = $('#pais').val();
+      const departamento = $('#departamento').val();
+      const provincia = $('#provincia').val();
+      const municipio = $('#municipio').val();
+      const recintos = [...new Set(recintosData.filter(r =>
+        r.nombre_pais === pais &&
+        r.nombre_departamento === departamento &&
+        r.nombre_provincia === provincia &&
+        r.nombre_municipio === municipio
+      ).map(r => r.nombre_recinto))];
+      const select = $('#recinto');
+      select.empty().append(new Option('Selecciona recinto', ''));
+      recintos.forEach(r => select.append(new Option(r, r)));
       select.trigger('change');
     }
 
@@ -184,15 +218,12 @@ Aquí tienes el código HTML completo y actualizado del formulario `votar.html` 
 
     $(document).ready(() => {
       cargarDatos();
-      $('#pais').select2().on('change', () => filtrarYActualizar('pais', 'departamento', 'nombre_pais', 'nombre_departamento'));
-      $('#departamento').select2().on('change', () => filtrarYActualizar('departamento', 'provincia', 'nombre_departamento', 'nombre_provincia'));
-      $('#provincia').select2().on('change', () => filtrarYActualizar('provincia', 'municipio', 'nombre_provincia', 'nombre_municipio'));
-      $('#municipio').select2().on('change', () => filtrarYActualizar('municipio', 'recinto', 'nombre_municipio', 'nombre_recinto'));
+      $('#pais').select2().on('change', actualizarDepartamentos);
+      $('#departamento').select2().on('change', actualizarProvincias);
+      $('#provincia').select2().on('change', actualizarMunicipios);
+      $('#municipio').select2().on('change', actualizarRecintos);
       $('#recinto').select2();
     });
   </script>
 </body>
 </html>
-```
-
-¿Deseas que este formulario también muestre un resumen visual de los datos ingresados antes de enviar el voto?
