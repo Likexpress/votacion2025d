@@ -275,6 +275,20 @@ def api_recintos():
             })
     return jsonify(datos)
 
+
+@app.cli.command("resetdb")
+def resetdb():
+    """Elimina todas las tablas y las crea de nuevo."""
+    confirm = input("¿Estás seguro que deseas eliminar todas las tablas? (sí/no): ")
+    if confirm.lower() == "sí":
+        db.drop_all()
+        db.create_all()
+        print("✅ Base de datos reiniciada desde cero.")
+    else:
+        print("❌ Operación cancelada.")
+
+
+
 # ---------------------------
 # Página de preguntas frecuentes
 # ---------------------------
