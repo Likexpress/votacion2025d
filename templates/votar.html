@@ -1,4 +1,4 @@
-<!-- Pantalla de carga -->
+<!-- Inicio de votar.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,7 +9,6 @@
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
   <style>
     body {
       background-color: #f4f6f9;
@@ -44,10 +43,6 @@
       border: 1px solid #dee2e6;
       display: flex;
       align-items: center;
-      transition: box-shadow 0.2s ease-in-out;
-    }
-    .candidato-card:hover {
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
     .candidato-card img {
       width: 55px;
@@ -55,7 +50,6 @@
       object-fit: cover;
       border-radius: 50%;
       margin-right: 15px;
-      border: 1px solid #ccc;
     }
     .resumen {
       background-color: #fff;
@@ -82,7 +76,6 @@
   </style>
 </head>
 <body>
-  <!-- Pantalla de carga -->
   <div id="loader">
     <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Cargando">
     <div class="spinner-border text-primary" role="status"></div>
@@ -105,10 +98,9 @@
         <div class="mb-3">
           <label for="ci" class="form-label">Número de Carnet de Identidad:</label>
           <input type="number" id="ci" name="ci" class="form-control" required>
-          <div class="invalid-feedback">Por favor, introduce tu número de carnet.</div>
         </div>
 
-        <!-- Fecha -->
+        <!-- Fecha de nacimiento -->
         <div class="mb-3">
           <label class="form-label">Fecha de nacimiento:</label>
           <div class="row g-2">
@@ -123,18 +115,9 @@
             <div class="col">
               <select class="form-select" name="mes_nacimiento" required>
                 <option value="">Mes</option>
-                <option value="1">Enero</option>
-                <option value="2">Febrero</option>
-                <option value="3">Marzo</option>
-                <option value="4">Abril</option>
-                <option value="5">Mayo</option>
-                <option value="6">Junio</option>
-                <option value="7">Julio</option>
-                <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
+                {% for mes in ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'] %}
+                <option value="{{ loop.index }}">{{ mes }}</option>
+                {% endfor %}
               </select>
             </div>
             <div class="col">
@@ -148,13 +131,25 @@
           </div>
         </div>
 
-        <!-- País y Ciudad -->
+        <!-- Ubicación desde base de datos -->
         <div class="mb-3">
-          <label for="pais" class="form-label">País:</label>
+          <label class="form-label">País:</label>
           <select id="pais" name="pais" class="form-select" required></select>
         </div>
         <div class="mb-3">
-          <label for="ciudad" class="form-label">Ciudad:</label>
+          <label class="form-label">Departamento:</label>
+          <select id="departamento" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Provincia:</label>
+          <select id="provincia" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Municipio:</label>
+          <select id="municipio" class="form-select" required></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Recinto:</label>
           <select id="ciudad" name="ciudad" class="form-select" required></select>
         </div>
 
@@ -166,7 +161,6 @@
               'Jaime Dunn',
               'Jorge Tuto Quiroga',
               'Manfred Reyes Villa',
-              'Paulo Rodriguez Folster',
               'Rodrigo Paz Pereira',
               'Samuel Doria Medina'
             ] %}
@@ -201,69 +195,64 @@
     </div>
   </div>
 
-  <!-- Scripts -->
-  <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_site_key }}"></script>
   <script>
-    window.addEventListener("load", () => {
-      document.getElementById("loader").style.display = "none";
+    const selects = ['pais', 'departamento', 'provincia', 'municipio', 'ciudad'];
+    const niveles = ['pais', 'departamento', 'provincia', 'municipio', 'recinto'];
+
+    function cargarSelect(nivelIndex, idPadre = null) {
+      const nivel = niveles[nivelIndex];
+      const url = `/api/ubicaciones?nivel=${nivel}` + (idPadre ? `&id=${idPadre}` : '');
+
+      $.getJSON(url, data => {
+        const select = $(`#${selects[nivelIndex]}`);
+        select.empty().append(new Option("Seleccione", ""));
+        data.forEach(opt => select.append(new Option(opt.nombre, opt.nombre)));
+        select.trigger('change');
+      });
+    }
+
+    $(document).ready(() => {
+      selects.forEach(id => $(`#${id}`).select2({ width: '100%' }));
+
+      cargarSelect(0); // Países
+
+      $('#pais').on('change', function () {
+        cargarSelect(1, this.value);
+      });
+
+      $('#departamento').on('change', function () {
+        cargarSelect(2, this.value);
+      });
+
+      $('#provincia').on('change', function () {
+        cargarSelect(3, this.value);
+      });
+
+      $('#municipio').on('change', function () {
+        cargarSelect(4, this.value);
+      });
+
+      navigator.geolocation.getCurrentPosition(pos => {
+        $('#latitud').val(pos.coords.latitude);
+        $('#longitud').val(pos.coords.longitude);
+      });
+
+      setTimeout(() => $('#loader').fadeOut(), 500);
     });
-
-    grecaptcha.ready(function() {
-      grecaptcha.execute('{{ recaptcha_site_key }}', {action: 'submit'}).then(function(token) {
-        document.getElementById('recaptcha_token').value = token;
-      });
-    });
-
-    async function cargarPaises() {
-      const res = await fetch("https://countriesnow.space/api/v0.1/countries");
-      const data = await res.json();
-      const selectPais = $('#pais');
-      let paisPorDefecto = "Bolivia";
-
-      data.data.forEach(p => {
-        const option = new Option(p.country, p.country);
-        if (p.country === paisPorDefecto) option.selected = true;
-        selectPais.append(option);
-      });
-
-      await cargarCiudades(paisPorDefecto);
-      selectPais.on('change', e => cargarCiudades(e.target.value));
-    }
-
-    async function cargarCiudades(pais) {
-      const selectCiudad = $('#ciudad');
-      selectCiudad.empty().append(new Option("Cargando...", ""));
-      const res = await fetch("https://countriesnow.space/api/v0.1/countries/cities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ country: pais })
-      });
-      const data = await res.json();
-      selectCiudad.empty().append(new Option("Seleccione una ciudad", ""));
-      data.data.forEach(c => selectCiudad.append(new Option(c, c)));
-    }
-
-    function obtenerGeolocalizacion() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          $('#latitud').val(pos.coords.latitude);
-          $('#longitud').val(pos.coords.longitude);
-        });
-      }
-    }
 
     function mostrarResumen() {
-      document.getElementById('res_ci').textContent = document.getElementById('ci').value;
-      document.getElementById('res_fecha').textContent =
-        document.querySelector('[name="dia_nacimiento"]').value + "/" +
-        document.querySelector('[name="mes_nacimiento"]').value + "/" +
-        document.querySelector('[name="anio_nacimiento"]').value;
-      document.getElementById('res_pais').textContent = document.getElementById('pais').value;
-      document.getElementById('res_ciudad').textContent = document.getElementById('ciudad').value;
-      document.getElementById('res_candidato').textContent = document.querySelector('[name="candidato"]:checked').value;
-      document.getElementById('res_lat').textContent = document.getElementById('latitud').value;
-      document.getElementById('res_long').textContent = document.getElementById('longitud').value;
-      document.getElementById('resumenDatos').classList.remove('d-none');
+      $('#res_ci').text($('#ci').val());
+      $('#res_fecha').text(
+        $('[name="dia_nacimiento"]').val() + '/' +
+        $('[name="mes_nacimiento"]').val() + '/' +
+        $('[name="anio_nacimiento"]').val()
+      );
+      $('#res_pais').text($('#pais').val());
+      $('#res_ciudad').text($('#ciudad').val());
+      $('#res_candidato').text($('[name="candidato"]:checked').val());
+      $('#res_lat').text($('#latitud').val());
+      $('#res_long').text($('#longitud').val());
+      $('#resumenDatos').removeClass('d-none');
     }
 
     function bloquearBoton() {
@@ -271,33 +260,6 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Enviando...';
     }
-
-    $(document).ready(() => {
-      $('#pais').select2({ placeholder: "Seleccione un país", width: '100%' });
-      $('#ciudad').select2({ placeholder: "Seleccione una ciudad", width: '100%' });
-      cargarPaises();
-      obtenerGeolocalizacion();
-
-      (() => {
-        'use strict';
-        const forms = document.querySelectorAll('.needs-validation');
-        Array.from(forms).forEach(form => {
-          form.addEventListener('submit', event => {
-            if (!form.checkValidity()) {
-              event.preventDefault();
-              event.stopPropagation();
-            }
-            form.classList.add('was-validated');
-          }, false);
-        });
-      })();
-    });
   </script>
-
-  <footer class="text-center text-muted mt-5 pb-4">
-    <hr>
-    <p class="mb-1">&copy; 2025 <strong>Primarias Bunker</strong></p>
-    <small>Participación ciudadana por un futuro democrático</small>
-  </footer>
 </body>
 </html>
