@@ -193,33 +193,33 @@ def votar():
 def enviar_voto():
     numero = request.form.get('numero')
     genero = request.form.get('genero')
-    pregunta1 = request.form.get('pregunta1')
-    pregunta2 = request.form.get('pregunta2')
-    pregunta3 = request.form.get('pregunta3')
-    ci = request.form.get('ci')  # Puede ser None
-    candidato = request.form.get('candidato')
     pais = request.form.get('pais')
-    ciudad = request.form.get('ciudad')
+    departamento = request.form.get('departamento')
+    provincia = request.form.get('provincia')
+    municipio = request.form.get('ciudad')
+    recinto = request.form.get('recinto')
     dia = request.form.get('dia_nacimiento')
     mes = request.form.get('mes_nacimiento')
     anio = request.form.get('anio_nacimiento')
+    pregunta1 = request.form.get('pregunta1')
+    candidato = request.form.get('candidato')
+    pregunta2 = request.form.get('pregunta2')
+    pregunta3 = request.form.get('pregunta3')
+    ci = request.form.get('ci') or None  # Solo se guarda si se ingresó
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    campos_obligatorios = [numero, genero, pregunta1, pregunta2, pregunta3, candidato, pais, ciudad, dia, mes, anio]
+    if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+        return "Faltan campos obligatorios.", 400
 
-    if pregunta3 == "Sí":
-        if not ci:
-            return "Debe ingresar el Carnet de Identidad si desea colaborar en el control del voto."
+    if pregunta3 == "Sí" and not ci:
+        return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
+
+    if ci:
         try:
             ci = int(ci)
-        except ValueError:
-            return "El Carnet de Identidad no es válido."
-    else:
-        ci = None  # No se guarda si no respondió 'Sí'
-
-    if not all(campos_obligatorios):
-        return "Faltan campos obligatorios."
+        except:
+            return "CI inválido.", 400
 
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
@@ -227,16 +227,19 @@ def enviar_voto():
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
-        pregunta1=pregunta1,
-        pregunta2=pregunta2,
-        pregunta3=pregunta3,
-        ci=ci,
-        candidato=candidato,
         pais=pais,
-        ciudad=ciudad,
+        departamento=departamento,
+        provincia=provincia,
+        municipio=municipio,
+        recinto=recinto,
         dia_nacimiento=int(dia),
         mes_nacimiento=int(mes),
         anio_nacimiento=int(anio),
+        pregunta1=pregunta1,
+        candidato=candidato,
+        pregunta2=pregunta2,
+        pregunta3=pregunta3,
+        ci=ci,
         ip=ip
     )
 
@@ -245,15 +248,17 @@ def enviar_voto():
     db.session.commit()
 
     return render_template("voto_exitoso.html",
-                           candidato=candidato,
                            numero=numero,
-                           ci=ci,
                            genero=genero,
+                           pais=pais,
+                           departamento=departamento,
+                           provincia=provincia,
+                           municipio=municipio,
+                           recinto=recinto,
                            dia=dia,
                            mes=mes,
                            anio=anio,
-                           ciudad=ciudad,
-                           pais=pais)
+                           candidato=candidato)
 
 
 # ---------------------------
@@ -274,20 +279,6 @@ def api_recintos():
                 "nombre_recinto": fila["nombre_recinto"]
             })
     return jsonify(datos)
-
-
-@app.cli.command("resetdb")
-def resetdb():
-    """Elimina todas las tablas y las crea de nuevo."""
-    confirm = input("¿Estás seguro que deseas eliminar todas las tablas? (sí/no): ")
-    if confirm.lower() == "sí":
-        db.drop_all()
-        db.create_all()
-        print("✅ Base de datos reiniciada desde cero.")
-    else:
-        print("❌ Operación cancelada.")
-
-
 
 # ---------------------------
 # Página de preguntas frecuentes
