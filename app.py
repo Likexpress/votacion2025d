@@ -201,7 +201,7 @@ def enviar_voto():
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
     provincia = request.form.get('provincia')
-    municipio = request.form.get('ciudad')
+    municipio = request.form.get('municipio')
     recinto = request.form.get('recinto')
     dia = request.form.get('dia_nacimiento')
     mes = request.form.get('mes_nacimiento')
