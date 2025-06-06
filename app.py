@@ -259,6 +259,14 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+# ---------------------------
+# Numerp Temporal
+# ---------------------------
+class NumeroTemporal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(50), unique=True, nullable=False)
+    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 
 # ---------------------------
