@@ -33,14 +33,12 @@ migrate = Migrate(app, db)
 class Voto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     numero = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    ci = db.Column(db.BigInteger, nullable=True)  # Ya no es obligatorio
     genero = db.Column(db.String(10), nullable=False)
-    pregunta1 = db.Column(db.String(10), nullable=False)
-    pregunta2 = db.Column(db.String(10), nullable=False)
-    pregunta3 = db.Column(db.String(10), nullable=False)
-    candidato = db.Column(db.String(100), nullable=False)
     pais = db.Column(db.String(100), nullable=False)
-    ciudad = db.Column(db.String(100), nullable=False)
+    departamento = db.Column(db.String(100), nullable=False)
+    provincia = db.Column(db.String(100), nullable=False)
+    municipio = db.Column(db.String(100), nullable=False)
+    recinto = db.Column(db.String(100), nullable=False)
     dia_nacimiento = db.Column(db.Integer, nullable=False)
     mes_nacimiento = db.Column(db.Integer, nullable=False)
     anio_nacimiento = db.Column(db.Integer, nullable=False)
@@ -48,7 +46,19 @@ class Voto(db.Model):
     longitud = db.Column(db.Float, nullable=True)
     ip = db.Column(db.String(50), nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
+    pregunta1 = db.Column(db.String(10), nullable=False)
+    candidato = db.Column(db.String(100), nullable=False)
+    pregunta2 = db.Column(db.String(10), nullable=False)
+    pregunta3 = db.Column(db.String(10), nullable=False)
+    ci = db.Column(db.BigInteger, nullable=True)
 
+class NumeroTemporal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(50), unique=True, nullable=False)
+    fecha = db.Column(db.DateTime, default=datetime.utcnow)
+
+with app.app_context():
+    db.create_all()
 
 # ---------------------------
 # Webhook para WhatsApp
@@ -83,9 +93,7 @@ def whatsapp_webhook():
             }
             token = serializer.dumps(token_data)
 
-            dominio = os.environ.get("AZURE_DOMAIN")
-            if not dominio:
-                dominio = request.host_url.rstrip('/')
+            dominio = os.environ.get("AZURE_DOMAIN") or request.host_url.rstrip('/')
             link = f"{dominio}/votar?token={token}"
 
             mensaje = (
@@ -113,10 +121,7 @@ def whatsapp_webhook():
             }
 
             r = requests.post(url, headers=headers, json=body)
-            if r.status_code == 200:
-                print("✅ Enlace enviado correctamente.")
-            else:
-                print("❌ Error al enviar:", r.text)
+            print("✅ Enlace enviado correctamente." if r.status_code == 200 else "❌ Error al enviar:", r.text)
 
     except Exception as e:
         print("❌ Error procesando mensaje:", str(e))
@@ -205,7 +210,7 @@ def enviar_voto():
     candidato = request.form.get('candidato')
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
-    ci = request.form.get('ci') or None  # Solo se guarda si se ingresó
+    ci = request.form.get('ci') or None
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
@@ -259,15 +264,6 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
-# ---------------------------
-# Numerp Temporal
-# ---------------------------
-class NumeroTemporal(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.String(50), unique=True, nullable=False)
-    fecha = db.Column(db.DateTime, default=datetime.utcnow)
-
-
 
 # ---------------------------
 # API local desde CSV
