@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from datetime import datetime
@@ -7,7 +7,7 @@ import os
 import requests
 from flask_migrate import Migrate
 import json
-from paises import PAISES_CODIGOS
+import sqlite3
 
 # ---------------------------
 # Configuración inicial
@@ -19,7 +19,7 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
 serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 # ---------------------------
-# Configuración de la base de datos
+# Configuración de la base de datos principal
 # ---------------------------
 db_url = os.environ.get("DATABASE_URL", "sqlite:///votos.db")
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
@@ -156,7 +156,7 @@ def generar_link():
             db.session.commit()
 
         return redirect("https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia.")
-    return render_template("generar_link.html", paises=PAISES_CODIGOS)
+    return render_template("generar_link.html")
 
 # ---------------------------
 # Página de votación
@@ -226,7 +226,6 @@ def enviar_voto():
     )
     db.session.add(nuevo_voto)
 
-    # 🔒 Eliminar token usado
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
@@ -246,6 +245,37 @@ def enviar_voto():
 @app.route('/preguntas')
 def preguntas_frecuentes():
     return render_template("preguntas.html")
+
+# ---------------------------
+# API para ubicaciones desde SQLite
+# ---------------------------
+def get_recintos_db_connection():
+    return sqlite3.connect("RecintosParaPrimaria.sql")
+
+@app.route('/api/ubicaciones')
+def api_ubicaciones():
+    nivel = request.args.get("nivel")
+    id_superior = request.args.get("id")
+    conn = get_recintos_db_connection()
+    cursor = conn.cursor()
+
+    if nivel == "pais":
+        cursor.execute("SELECT DISTINCT id_pais, nombre_pais FROM recintos ORDER BY nombre_pais")
+    elif nivel == "departamento":
+        cursor.execute("SELECT DISTINCT id_departamento, nombre_departamento FROM recintos WHERE id_pais = ?", (id_superior,))
+    elif nivel == "provincia":
+        cursor.execute("SELECT DISTINCT id_provincia, nombre_provincia FROM recintos WHERE id_departamento = ?", (id_superior,))
+    elif nivel == "municipio":
+        cursor.execute("SELECT DISTINCT id_municipio, nombre_municipio FROM recintos WHERE id_provincia = ?", (id_superior,))
+    elif nivel == "recinto":
+        cursor.execute("SELECT DISTINCT id_recinto, nombre_recinto FROM recintos WHERE id_municipio = ?", (id_superior,))
+    else:
+        conn.close()
+        return jsonify({"error": "Nivel inválido"}), 400
+
+    datos = [{"id": row[0], "nombre": row[1]} for row in cursor.fetchall()]
+    conn.close()
+    return jsonify(datos)
 
 # ---------------------------
 # Ejecutar localmente
