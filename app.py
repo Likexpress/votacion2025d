@@ -7,7 +7,6 @@ import os
 import requests
 from flask_migrate import Migrate
 import json
-from paises import PAISES_CODIGOS
 import csv
 
 # ---------------------------
@@ -157,7 +156,7 @@ def generar_link():
             db.session.commit()
 
         return redirect("https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia.")
-    return render_template("generar_link.html", paises=PAISES_CODIGOS)
+    return render_template("generar_link.html", paises={"Bolivia": "+591"})
 
 # ---------------------------
 # Página de votación
@@ -226,7 +225,6 @@ def enviar_voto():
         ip=ip
     )
     db.session.add(nuevo_voto)
-
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
@@ -241,17 +239,23 @@ def enviar_voto():
                            pais=pais)
 
 # ---------------------------
-# API local para obtener países y ciudades desde CSV
+# API local desde CSV
 # ---------------------------
-@app.route('/api/recintos', methods=['GET'])
+@app.route('/api/recintos')
 def api_recintos():
-    recintos_path = os.path.join(os.path.dirname(__file__), 'RecintosParaPrimaria.csv')
-    resultados = []
-    with open(recintos_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            resultados.append(row)
-    return jsonify(resultados)
+    archivo = os.path.join(os.path.dirname(__file__), "RecintosParaPrimaria.csv")
+    datos = []
+    with open(archivo, encoding='utf-8') as f:
+        lector = csv.DictReader(f)
+        for fila in lector:
+            datos.append({
+                "nombre_pais": fila["nombre_pais"],
+                "nombre_departamento": fila["nombre_departamento"],
+                "nombre_provincia": fila["nombre_provincia"],
+                "nombre_municipio": fila["nombre_municipio"],
+                "nombre_recinto": fila["nombre_recinto"]
+            })
+    return jsonify(datos)
 
 # ---------------------------
 # Página de preguntas frecuentes
