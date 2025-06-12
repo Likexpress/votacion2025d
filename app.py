@@ -170,17 +170,23 @@ def votar():
     except Exception as e:
         return f"Error al procesar el token: {str(e)}"
 
-    # ✅ Verificación completa del número y número_confirmado
+    # Verificar que el número esté en NumeroTemporal
     registro = NumeroTemporal.query.filter_by(numero=numero).first()
-    if not registro or registro.numero_confirmado != numero:
+    if not registro:
         return render_template("numero_no_coincide.html")
 
-    # Si ya votó
+    # ✅ Si aún no se ha registrado numero_confirmado, lo guardamos aquí
+    if not registro.numero_confirmado:
+        registro.numero_confirmado = numero
+        db.session.commit()
+
+    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Si todo está correcto, se muestra el formulario
+    # Mostrar el formulario
     return render_template("votar.html", numero=numero)
+
 
 
 
