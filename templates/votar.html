@@ -22,11 +22,9 @@
 
     <div class="card p-4">
       <form method="post" action="/enviar_voto" class="needs-validation" novalidate>
-
-
         <input type="hidden" name="numero" value="{{ numero }}">
-
-
+        <input type="hidden" name="latitud" id="latitud">
+        <input type="hidden" name="longitud" id="longitud">
 
         <!-- Género -->
         <div class="mb-3">
@@ -107,7 +105,6 @@
           <select name="candidato" class="form-select" required>
             <option value="">Selecciona un candidato</option>
             {% for candidato in ['Andronico Rodriguez', 'Eduardo del Castillo', 'Eva Copa', 'Jaime Dunn', 'Jhonny Fernández', 'Jorge Tuto Quiroga', 'Manfred Reyes Villa', 'Samuel Doria Medina'] %}
-
               <option value="{{ candidato }}">{{ candidato }}</option>
             {% endfor %}
           </select>
@@ -229,6 +226,24 @@
       $('#municipio').select2().on('change', actualizarRecintos);
       $('#recinto').select2();
     });
+
+    // Geolocalización al cargar
+    window.onload = function () {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            document.getElementById('latitud').value = pos.coords.latitude;
+            document.getElementById('longitud').value = pos.coords.longitude;
+          },
+          function (error) {
+            console.warn("No se pudo obtener la ubicación: " + error.message);
+          },
+          { timeout: 10000 }
+        );
+      } else {
+        console.warn("Geolocalización no soportada.");
+      }
+    };
   </script>
 </body>
 </html>
