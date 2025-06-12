@@ -221,14 +221,17 @@ def votar():
 
     # Verificar que el número esté en NumeroTemporal
     if not NumeroTemporal.query.filter_by(numero=numero).first():
-        # Mensaje de advertencia por WhatsApp
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
 
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # ✅ LÍNEA CRÍTICA PARA VALIDAR COINCIDENCIA
+    session['numero_token'] = numero
+
     return render_template("votar.html", numero=numero)
+
 
 
 
