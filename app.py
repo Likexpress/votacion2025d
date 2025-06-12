@@ -68,11 +68,11 @@ with app.app_context():
 # ---------------------------
 @app.route('/votar')
 def votar():
-    token = request.args.get('token')
-    if not token:
-        return "Acceso no válido."
-
     try:
+        token = request.args.get('token')
+        if not token:
+            return "Acceso no válido."
+
         data = serializer.loads(token, max_age=600)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
@@ -81,28 +81,22 @@ def votar():
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
-    except SignatureExpired:
-        return "El enlace ha expirado. Solicita uno nuevo."
-    except BadSignature:
-        return "Enlace inválido o alterado."
+        registro = NumeroTemporal.query.filter_by(numero=numero).first()
+        if not registro:
+            return render_template("numero_no_coincide.html")
+
+        if not registro.numero_confirmado:
+            registro.numero_confirmado = numero
+            db.session.commit()
+
+        if Voto.query.filter_by(numero=numero).first():
+            return render_template("voto_ya_registrado.html")
+
+        return render_template("votar.html", numero=numero)
+
     except Exception as e:
-        return f"Error al procesar el token: {str(e)}"
+        return f"⚠️ Error interno en /votar: {str(e)}"
 
-    # Verificar que el número esté en NumeroTemporal
-    registro = NumeroTemporal.query.filter_by(numero=numero).first()
-    if not registro:
-        return render_template("numero_no_coincide.html")
-
-    # ✅ Guardar el número confirmado si aún no existe
-    if not registro.numero_confirmado:
-        registro.numero_confirmado = numero
-        db.session.commit()
-
-    # Verificar si ya votó
-    if Voto.query.filter_by(numero=numero).first():
-        return render_template("voto_ya_registrado.html")
-
-    return render_template("votar.html", numero=numero)
 
 
 
