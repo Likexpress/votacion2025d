@@ -66,86 +66,43 @@ with app.app_context():
 # ---------------------------
 # Webhook para WhatsApp
 # ---------------------------
-@app.route('/whatsapp', methods=['POST'])
-def whatsapp_webhook():
-    data = request.json
-    print("📥 JSON recibido:")
-    print(json.dumps(data, indent=2))
+@app.route('/votar')
+def votar():
+    token = request.args.get('token')
+    if not token:
+        return "Acceso no válido."
 
     try:
-        entry = data['entry'][0]
-        value = entry['changes'][0]['value']
-        messages = value.get('messages')
+        data = serializer.loads(token, max_age=600)
+        numero = data.get("numero")
+        dominio_token = data.get("dominio")
+        dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
-        if not messages:
-            return "ok", 200
+        if dominio_token != dominio_esperado:
+            return "Dominio inválido para este enlace."
 
-        numero = messages[0]['from']
-        texto = messages[0]['text']['body'].strip().lower()
-
-        if "votar" in texto:
-            numero_completo = "+" + numero
-
-            # Generar token con dominio y número
-            token_data = {
-                "numero": numero_completo,
-                "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
-            }
-            token = serializer.dumps(token_data)
-
-            dominio = os.environ.get("AZURE_DOMAIN") or request.host_url.rstrip('/')
-            link = f"{dominio}/votar?token={token}"
-
-            mensaje = (
-                "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
-                "Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
-                f"Aquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}\n\n"
-                "Este enlace es personal e intransferible. Solo se permite un voto por persona.\n\n"
-                "Gracias por ser parte del cambio que Bolivia necesita."
-            )
-
-            # Enviar mensaje por WhatsApp
-            url = "https://waba-v2.360dialog.io/messages"
-            headers = {
-                "Content-Type": "application/json",
-                "D360-API-KEY": os.environ.get("WABA_TOKEN")
-            }
-            body = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual",
-                "to": numero_completo,
-                "type": "text",
-                "text": {
-                    "preview_url": False,
-                    "body": mensaje
-                }
-            }
-
-            r = requests.post(url, headers=headers, json=body)
-
-            if r.status_code == 200:
-                print("✅ Enlace enviado correctamente.")
-
-                # ✅ Guardar o actualizar número_confirmado
-                registro = NumeroTemporal.query.filter_by(numero=numero_completo).first()
-                if registro:
-                    registro.numero_confirmado = numero_completo
-                else:
-                    nuevo = NumeroTemporal(numero=numero_completo, numero_confirmado=numero_completo)
-                    db.session.add(nuevo)
-
-                db.session.commit()
-            else:
-                print("❌ Error al enviar mensaje:", r.text)
-
+    except SignatureExpired:
+        return "El enlace ha expirado. Solicita uno nuevo."
+    except BadSignature:
+        return "Enlace inválido o alterado."
     except Exception as e:
-        print("❌ Error procesando mensaje:", str(e))
+        return f"Error al procesar el token: {str(e)}"
 
-    return "ok", 200
+    # Verificar que el número esté en NumeroTemporal
+    registro = NumeroTemporal.query.filter_by(numero=numero).first()
+    if not registro:
+        return render_template("numero_no_coincide.html")
 
+    # ✅ Guardar el número confirmado si aún no existe
+    if not registro.numero_confirmado:
+        registro.numero_confirmado = numero
+        db.session.commit()
 
+    # Verificar si ya votó
+    if Voto.query.filter_by(numero=numero).first():
+        return render_template("voto_ya_registrado.html")
 
-
+    return render_template("votar.html", numero=numero)
 
 
 
@@ -272,7 +229,10 @@ def enviar_voto():
 
     # Validación de coincidencia entre número ingresado y número confirmado por WhatsApp
     registro = NumeroTemporal.query.filter_by(numero=numero).first()
-    if not registro or registro.numero_confirmado != numero:
+    if not registro:
+        return render_template("numero_no_coincide.html")
+
+    if not registro.numero_confirmado or registro.numero_confirmado != numero:
         return render_template("numero_no_coincide.html")
 
     # Registro del voto
@@ -311,6 +271,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
