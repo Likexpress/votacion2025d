@@ -230,6 +230,12 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
+    # Validar que el número esté autorizado (presente en NumeroTemporal)
+    autorizado = NumeroTemporal.query.filter_by(numero=numero).first()
+    if not autorizado:
+        return "El número ingresado no coincide con el que solicitó el enlace. El voto ha sido rechazado.", 400
+
+    # Validación de campos obligatorios
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
@@ -242,9 +248,11 @@ def enviar_voto():
         except:
             return "CI inválido.", 400
 
+    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # Registrar voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -265,7 +273,7 @@ def enviar_voto():
     )
 
     db.session.add(nuevo_voto)
-    NumeroTemporal.query.filter_by(numero=numero).delete()
+    db.session.delete(autorizado)  # Eliminar el número temporal una vez votó
     db.session.commit()
 
     return render_template("voto_exitoso.html",
@@ -280,6 +288,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
