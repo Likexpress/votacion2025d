@@ -263,7 +263,7 @@ def enviar_voto():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Validación de coincidencia entre número y número_confirmado
+    # Validación de coincidencia entre número ingresado y número confirmado por WhatsApp
     registro = NumeroTemporal.query.filter_by(numero=numero).first()
     if not registro or registro.numero_confirmado != numero:
         return render_template("numero_no_coincide.html")
@@ -304,6 +304,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
