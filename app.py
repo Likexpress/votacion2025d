@@ -231,6 +231,11 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
+    # Validar que el número del token coincida con el del formulario
+    numero_token = session.get('numero_token')
+    if not numero_token or numero_token != numero:
+        return render_template("numero_no_coincide.html")  # Debes crear esta plantilla
+
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
@@ -281,6 +286,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
