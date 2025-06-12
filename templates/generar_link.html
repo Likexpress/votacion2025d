@@ -15,8 +15,9 @@
   <!-- Open Graph para redes sociales -->
   <meta property="og:title" content="Elecciones Ciudadanas 2025" />
   <meta property="og:description" content="Participa en las Primarias y elige al candidato de oposición que representará a Bolivia." />
-  <meta property="og:image" content="https://sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net/static/img/og-image.jpg" />
-  <meta property="og:url" content="https://sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net/generar_link" />
+  <meta property="og:image" content="{{ request.host_url }}static/img/og-image.jpg" />
+  <meta property="og:url" content="{{ request.host_url }}generar_link" />
+
   <meta property="og:type" content="website" />
 
   <style>
