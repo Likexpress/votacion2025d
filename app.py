@@ -86,7 +86,7 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
-            # Generar token y link
+            # Generar token con dominio y número
             token_data = {
                 "numero": numero_completo,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
@@ -126,22 +126,23 @@ def whatsapp_webhook():
             if r.status_code == 200:
                 print("✅ Enlace enviado correctamente.")
 
-                # 🔄 Guardar o actualizar número_confirmado
+                # ✅ Guardar o actualizar número_confirmado
                 registro = NumeroTemporal.query.filter_by(numero=numero_completo).first()
-                if not registro:
+                if registro:
+                    registro.numero_confirmado = numero_completo
+                else:
                     nuevo = NumeroTemporal(numero=numero_completo, numero_confirmado=numero_completo)
                     db.session.add(nuevo)
-                else:
-                    registro.numero_confirmado = numero_completo  # Actualizar solo la columna
-                db.session.commit()
 
+                db.session.commit()
             else:
-                print("❌ Error al enviar:", r.text)
+                print("❌ Error al enviar mensaje:", r.text)
 
     except Exception as e:
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 
