@@ -8,7 +8,8 @@ import requests
 from flask_migrate import Migrate
 import json
 import csv
-from flask import session  # Asegúrate de tener esta importación al inicio
+from paises import PAISES_CODIGOS
+
 
 
 # ---------------------------
@@ -161,7 +162,9 @@ def generar_link():
             db.session.commit()
 
         return redirect("https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia.")
-    return render_template("generar_link.html", paises={"Bolivia": "+591"})
+
+    return render_template("generar_link.html", paises=PAISES_CODIGOS)
+
 
 # ---------------------------
 # Página de votación
