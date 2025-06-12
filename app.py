@@ -86,14 +86,25 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
-            if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
-                db.session.add(NumeroTemporal(numero=numero_completo))
-                db.session.commit()
+            # Buscar si ya existe el registro
+            registro = NumeroTemporal.query.filter_by(numero=numero_completo).first()
+
+            if not registro:
+                # Nuevo registro con número confirmado
+                nuevo_registro = NumeroTemporal(
+                    numero=numero_completo,
+                    numero_confirmado=numero_completo
+                )
+                db.session.add(nuevo_registro)
+            else:
+                # Actualizar número confirmado si ya existía
+                registro.numero_confirmado = numero_completo
+
+            db.session.commit()
 
             token_data = {
                 "numero": numero_completo,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
-
             }
             token = serializer.dumps(token_data)
 
@@ -131,6 +142,7 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 # ---------------------------
 # Página principal
@@ -231,6 +243,7 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
+    # Validación de campos obligatorios
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
@@ -243,9 +256,16 @@ def enviar_voto():
         except:
             return "CI inválido.", 400
 
+    # Validación de doble voto
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # Validación de coincidencia entre número y número_confirmado
+    registro = NumeroTemporal.query.filter_by(numero=numero).first()
+    if not registro or registro.numero_confirmado != numero:
+        return render_template("numero_no_coincide.html")
+
+    # Registro del voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -281,6 +301,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
