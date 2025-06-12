@@ -171,12 +171,13 @@ def votar():
         return "Acceso no válido."
 
     try:
+        # Cargar los datos del token
         data = serializer.loads(token, max_age=600)
-        numero = data.get("numero")
+        numero = data.get("numero")  # Número con el que se generó el token
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
-
+        # Validación de dominio (para evitar que lo usen desde otro dominio)
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
@@ -185,20 +186,28 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
+    # Validar si el número todavía está registrado en NumeroTemporal (no fue usado ya)
+    if not NumeroTemporal.query.filter_by(numero=numero).first():
+        enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
+        return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
+
+    # Si ya votó, no mostrar el formulario
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    if not NumeroTemporal.query.filter_by(numero=numero).first():
-        return "Este enlace ya fue utilizado o no es válido."
-
+    # Mostrar formulario pasando el número original del token
     return render_template("votar.html", numero=numero)
+
+
 
 # ---------------------------
 # Enviar voto
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    numero = request.form.get('numero')
+    numero_ingresado = request.form.get('numero')  # Número que el usuario escribe
+    numero_real = request.form.get('numero_real')  # Número que viene oculto del token (el verdadero)
+
     genero = request.form.get('genero')
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
@@ -216,7 +225,13 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+    # Verificación de integridad del número
+    if numero_ingresado != numero_real:
+        enviar_mensaje_whatsapp(numero_real, "El número ingresado en el formulario no coincide con el número autorizado. Por favor, usa tu número real.")
+        return "Número no coincide con el enlace proporcionado. Usa tu número real para continuar.", 403
+
+    # Validación de campos
+    if not all([numero_ingresado, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
     if pregunta3 == "Sí" and not ci:
@@ -228,11 +243,13 @@ def enviar_voto():
         except:
             return "CI inválido.", 400
 
-    if Voto.query.filter_by(numero=numero).first():
+    # Verificar si ya existe un voto con ese número
+    if Voto.query.filter_by(numero=numero_ingresado).first():
         return render_template("voto_ya_registrado.html")
 
+    # Registrar nuevo voto
     nuevo_voto = Voto(
-        numero=numero,
+        numero=numero_ingresado,
         genero=genero,
         pais=pais,
         departamento=departamento,
@@ -251,11 +268,11 @@ def enviar_voto():
     )
 
     db.session.add(nuevo_voto)
-    NumeroTemporal.query.filter_by(numero=numero).delete()
+    NumeroTemporal.query.filter_by(numero=numero_real).delete()  # Eliminar el número real autorizado
     db.session.commit()
 
     return render_template("voto_exitoso.html",
-                           numero=numero,
+                           numero=numero_ingresado,
                            genero=genero,
                            pais=pais,
                            departamento=departamento,
@@ -266,6 +283,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 # ---------------------------
 # API local desde CSV
