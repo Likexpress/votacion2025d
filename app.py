@@ -207,84 +207,92 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    numero_ingresado = request.form.get('numero')  # Número que el usuario escribe
-    numero_real = request.form.get('numero_real')  # Número que viene oculto del token (el verdadero)
+    try:
+        numero = request.form.get('numero')
+        genero = request.form.get('genero')
+        pais = request.form.get('pais')
+        departamento = request.form.get('departamento')
+        provincia = request.form.get('provincia')
+        municipio = request.form.get('municipio')
+        recinto = request.form.get('recinto')
+        dia = request.form.get('dia_nacimiento')
+        mes = request.form.get('mes_nacimiento')
+        anio = request.form.get('anio_nacimiento')
+        pregunta1 = request.form.get('pregunta1')
+        candidato = request.form.get('candidato')
+        pregunta2 = request.form.get('pregunta2')
+        pregunta3 = request.form.get('pregunta3')
+        ci = request.form.get('ci') or None
 
-    genero = request.form.get('genero')
-    pais = request.form.get('pais')
-    departamento = request.form.get('departamento')
-    provincia = request.form.get('provincia')
-    municipio = request.form.get('municipio')
-    recinto = request.form.get('recinto')
-    dia = request.form.get('dia_nacimiento')
-    mes = request.form.get('mes_nacimiento')
-    anio = request.form.get('anio_nacimiento')
-    pregunta1 = request.form.get('pregunta1')
-    candidato = request.form.get('candidato')
-    pregunta2 = request.form.get('pregunta2')
-    pregunta3 = request.form.get('pregunta3')
-    ci = request.form.get('ci') or None
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        # Verificar campos obligatorios
+        if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+            return "Faltan campos obligatorios.", 400
 
-    # Verificación de integridad del número
-    if numero_ingresado != numero_real:
-        enviar_mensaje_whatsapp(numero_real, "El número ingresado en el formulario no coincide con el número autorizado. Por favor, usa tu número real.")
-        return "Número no coincide con el enlace proporcionado. Usa tu número real para continuar.", 403
+        if pregunta3 == "Sí" and not ci:
+            return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
 
-    # Validación de campos
-    if not all([numero_ingresado, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
-        return "Faltan campos obligatorios.", 400
-
-    if pregunta3 == "Sí" and not ci:
-        return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
-
-    if ci:
+        # Validar conversión de fechas
         try:
-            ci = int(ci)
-        except:
-            return "CI inválido.", 400
+            dia = int(dia)
+            mes = int(mes)
+            anio = int(anio)
+            if ci:
+                ci = int(ci)
+        except ValueError:
+            return "Fecha de nacimiento o CI inválido.", 400
 
-    # Verificar si ya existe un voto con ese número
-    if Voto.query.filter_by(numero=numero_ingresado).first():
-        return render_template("voto_ya_registrado.html")
+        # Verificar si el número existe en NumeroTemporal
+        numero_temp = NumeroTemporal.query.filter_by(numero=numero).first()
+        if not numero_temp:
+            return "El número no coincide con el enlace enviado. Debes ingresar tus datos reales.", 400
 
-    # Registrar nuevo voto
-    nuevo_voto = Voto(
-        numero=numero_ingresado,
-        genero=genero,
-        pais=pais,
-        departamento=departamento,
-        provincia=provincia,
-        municipio=municipio,
-        recinto=recinto,
-        dia_nacimiento=int(dia),
-        mes_nacimiento=int(mes),
-        anio_nacimiento=int(anio),
-        pregunta1=pregunta1,
-        candidato=candidato,
-        pregunta2=pregunta2,
-        pregunta3=pregunta3,
-        ci=ci,
-        ip=ip
-    )
+        # Verificar si ya votó
+        if Voto.query.filter_by(numero=numero).first():
+            return render_template("voto_ya_registrado.html")
 
-    db.session.add(nuevo_voto)
-    NumeroTemporal.query.filter_by(numero=numero_real).delete()  # Eliminar el número real autorizado
-    db.session.commit()
+        # Registrar voto
+        nuevo_voto = Voto(
+            numero=numero,
+            genero=genero,
+            pais=pais,
+            departamento=departamento,
+            provincia=provincia,
+            municipio=municipio,
+            recinto=recinto,
+            dia_nacimiento=dia,
+            mes_nacimiento=mes,
+            anio_nacimiento=anio,
+            pregunta1=pregunta1,
+            candidato=candidato,
+            pregunta2=pregunta2,
+            pregunta3=pregunta3,
+            ci=ci,
+            ip=ip
+        )
 
-    return render_template("voto_exitoso.html",
-                           numero=numero_ingresado,
-                           genero=genero,
-                           pais=pais,
-                           departamento=departamento,
-                           provincia=provincia,
-                           municipio=municipio,
-                           recinto=recinto,
-                           dia=dia,
-                           mes=mes,
-                           anio=anio,
-                           candidato=candidato)
+        db.session.add(nuevo_voto)
+        db.session.delete(numero_temp)  # eliminar temporal
+        db.session.commit()
+
+        return render_template("voto_exitoso.html",
+                            numero=numero,
+                            genero=genero,
+                            pais=pais,
+                            departamento=departamento,
+                            provincia=provincia,
+                            municipio=municipio,
+                            recinto=recinto,
+                            dia=dia,
+                            mes=mes,
+                            anio=anio,
+                            candidato=candidato)
+
+    except Exception as e:
+        print("❌ Error al guardar el voto:", str(e))
+        return "Error interno del servidor.", 500
+
 
 
 # ---------------------------
