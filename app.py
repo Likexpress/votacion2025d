@@ -9,6 +9,8 @@ from flask_migrate import Migrate
 import json
 import csv
 from paises import PAISES_CODIGOS
+from flask import session
+
 
 
 
@@ -171,6 +173,8 @@ def generar_link():
 # ---------------------------
 
 
+from flask import session
+
 @app.route('/votar')
 def votar():
     token = request.args.get('token')
@@ -193,14 +197,17 @@ def votar():
 
     # Verificar que el número esté en NumeroTemporal
     if not NumeroTemporal.query.filter_by(numero=numero).first():
-        # Mensaje de advertencia por WhatsApp
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
 
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # Guardar el número del token en la sesión para validarlo después
+    session['numero_token'] = numero
+
     return render_template("votar.html", numero=numero)
+
 
 
 
@@ -208,8 +215,6 @@ def votar():
 # ---------------------------
 # Enviar voto
 # ---------------------------
-
-
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
     numero = request.form.get('numero')
@@ -230,7 +235,12 @@ def enviar_voto():
 
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Validación: solo permitir si el número está en NumeroTemporal
+    # Validar que el número coincida con el del token
+    numero_token = session.get('numero_token')
+    if numero != numero_token:
+        return render_template("numero_invalido.html", numero=numero)
+
+    # Validar que el número esté autorizado (en NumeroTemporal)
     autorizado = NumeroTemporal.query.filter_by(numero=numero).first()
     if not autorizado:
         return render_template("numero_invalido.html", numero=numero)
@@ -288,6 +298,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
