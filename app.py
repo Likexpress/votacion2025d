@@ -187,9 +187,11 @@ def votar():
         return "Enlace inválido o alterado."
 
     # Validar si el número todavía está registrado en NumeroTemporal (no fue usado ya)
+    # Validar que el número esté en NumeroTemporal antes de permitir guardar el voto
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
-        return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
+        return "Intento de manipulación detectado. El voto no será registrado.", 400
+
 
     # Si ya votó, no mostrar el formulario
     if Voto.query.filter_by(numero=numero).first():
