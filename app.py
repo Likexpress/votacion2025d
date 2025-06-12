@@ -8,6 +8,8 @@ import requests
 from flask_migrate import Migrate
 import json
 import csv
+from flask import session  # Asegúrate de tener esta importación al inicio
+
 
 # ---------------------------
 # Configuración inicial
@@ -164,6 +166,8 @@ def generar_link():
 # ---------------------------
 # Página de votación
 # ---------------------------
+
+
 @app.route('/votar')
 def votar():
     token = request.args.get('token')
@@ -177,7 +181,7 @@ def votar():
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
-        # Validación de dominio (para evitar que lo usen desde otro dominio)
+        # Validar dominio
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
@@ -186,29 +190,40 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
-    # Validar si el número todavía está registrado en NumeroTemporal (no fue usado ya)
-    # Validar que el número esté en NumeroTemporal antes de permitir guardar el voto
+    # Verificar que el número aún esté en NumeroTemporal (no usado aún)
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Intento de manipulación detectado. El voto no será registrado.", 400
 
-
-    # Si ya votó, no mostrar el formulario
+    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Mostrar formulario pasando el número original del token
+    # Guardar el número original del token en la sesión para validarlo en /enviar_voto
+    session['numero_token'] = numero
+
+    # Mostrar el formulario de votación
     return render_template("votar.html", numero=numero)
+
 
 
 
 # ---------------------------
 # Enviar voto
 # ---------------------------
+
+
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
     try:
+        # Obtener el número desde el formulario
         numero = request.form.get('numero')
+        numero_token = session.get('numero_token')  # Número que se guardó desde el token
+
+        if not numero_token or numero != numero_token:
+            return "El número no coincide con el enlace enviado. Debes ingresar tus datos reales.", 400
+
+        # Resto de los campos
         genero = request.form.get('genero')
         pais = request.form.get('pais')
         departamento = request.form.get('departamento')
@@ -233,7 +248,7 @@ def enviar_voto():
         if pregunta3 == "Sí" and not ci:
             return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
 
-        # Validar conversión de fechas
+        # Validar fechas y CI
         try:
             dia = int(dia)
             mes = int(mes)
@@ -243,16 +258,16 @@ def enviar_voto():
         except ValueError:
             return "Fecha de nacimiento o CI inválido.", 400
 
-        # Verificar si el número existe en NumeroTemporal
-        numero_temp = NumeroTemporal.query.filter_by(numero=numero).first()
-        if not numero_temp:
-            return "El número no coincide con el enlace enviado. Debes ingresar tus datos reales.", 400
-
         # Verificar si ya votó
         if Voto.query.filter_by(numero=numero).first():
             return render_template("voto_ya_registrado.html")
 
-        # Registrar voto
+        # Verificar que el número esté todavía en NumeroTemporal
+        numero_temp = NumeroTemporal.query.filter_by(numero=numero).first()
+        if not numero_temp:
+            return "El número ya usó el enlace o es inválido.", 400
+
+        # Guardar el voto
         nuevo_voto = Voto(
             numero=numero,
             genero=genero,
@@ -273,25 +288,26 @@ def enviar_voto():
         )
 
         db.session.add(nuevo_voto)
-        db.session.delete(numero_temp)  # eliminar temporal
+        db.session.delete(numero_temp)
         db.session.commit()
 
         return render_template("voto_exitoso.html",
-                            numero=numero,
-                            genero=genero,
-                            pais=pais,
-                            departamento=departamento,
-                            provincia=provincia,
-                            municipio=municipio,
-                            recinto=recinto,
-                            dia=dia,
-                            mes=mes,
-                            anio=anio,
-                            candidato=candidato)
+                               numero=numero,
+                               genero=genero,
+                               pais=pais,
+                               departamento=departamento,
+                               provincia=provincia,
+                               municipio=municipio,
+                               recinto=recinto,
+                               dia=dia,
+                               mes=mes,
+                               anio=anio,
+                               candidato=candidato)
 
     except Exception as e:
         print("❌ Error al guardar el voto:", str(e))
         return "Error interno del servidor.", 500
+
 
 
 
