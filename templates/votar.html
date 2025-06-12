@@ -22,7 +22,16 @@
 
     <div class="card p-4">
       <form method="post" action="/enviar_voto" class="needs-validation" novalidate>
-        <input type="hidden" name="numero" value="{{ numero }}">
+
+        <!-- Campo oculto con el número verdadero del token -->
+        <input type="hidden" name="numero_real" value="{{ numero }}">
+        
+        <!-- Campo editable que el usuario debe llenar manualmente -->
+        <div class="mb-3">
+          <label class="form-label">Número de WhatsApp que usaste para solicitar el enlace</label>
+          <input type="text" name="numero" class="form-control" required placeholder="Ej: +59171234567">
+        </div>
+
 
         <!-- Género -->
         <div class="mb-3">
