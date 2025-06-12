@@ -80,33 +80,13 @@ def whatsapp_webhook():
         if not messages:
             return "ok", 200
 
-        numero = messages[0]['from']  # sin el +
+        numero = messages[0]['from']
         texto = messages[0]['text']['body'].strip().lower()
 
         if "votar" in texto:
             numero_completo = "+" + numero
 
-            # VALIDAR SI YA VOTÓ
-            if Voto.query.filter_by(numero=numero_completo).first():
-                print("🔒 Este número ya ha votado.")
-                enviar_mensaje_whatsapp(numero_completo, "✅ Ya emitiste tu voto en las *Primarias Bolivia 2025*. Gracias por participar.")
-                return "ok", 200
-
-            # REGISTRAR O ACTUALIZAR NUMERO TEMPORAL
-            registro = NumeroTemporal.query.filter_by(numero=numero_completo).first()
-
-            if not registro:
-                nuevo_registro = NumeroTemporal(
-                    numero=numero_completo,
-                    numero_confirmado=numero_completo
-                )
-                db.session.add(nuevo_registro)
-            else:
-                registro.numero_confirmado = numero_completo
-
-            db.session.commit()
-
-            # GENERAR TOKEN Y LINK
+            # Datos para generar el token
             token_data = {
                 "numero": numero_completo,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
@@ -124,7 +104,7 @@ def whatsapp_webhook():
                 "Gracias por ser parte del cambio que Bolivia necesita."
             )
 
-            # ENVIAR MENSAJE POR WHATSAPP
+            # Enviar mensaje por WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
@@ -142,12 +122,28 @@ def whatsapp_webhook():
             }
 
             r = requests.post(url, headers=headers, json=body)
-            print("✅ Enlace enviado correctamente." if r.status_code == 200 else "❌ Error al enviar:", r.text)
+
+            if r.status_code == 200:
+                print("✅ Enlace enviado correctamente.")
+
+                # Guardar o actualizar número confirmado
+                registro = NumeroTemporal.query.filter_by(numero=numero_completo).first()
+                if not registro:
+                    nuevo = NumeroTemporal(numero=numero_completo, numero_confirmado=numero_completo)
+                    db.session.add(nuevo)
+                else:
+                    registro.numero_confirmado = numero_completo  # Actualiza solo si ya existía
+
+                db.session.commit()
+
+            else:
+                print("❌ Error al enviar:", r.text)
 
     except Exception as e:
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 
