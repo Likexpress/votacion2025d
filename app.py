@@ -175,13 +175,11 @@ def votar():
         return "Acceso no válido."
 
     try:
-        # Cargar los datos del token
         data = serializer.loads(token, max_age=600)
-        numero = data.get("numero")  # Número con el que se generó el token
+        numero = data.get("numero")
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
-        # Validar dominio
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
@@ -190,19 +188,15 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
-    # Verificar que el número aún esté en NumeroTemporal (no usado aún)
+    # Verificar que el número esté en NumeroTemporal
     if not NumeroTemporal.query.filter_by(numero=numero).first():
+        # Mensaje de advertencia por WhatsApp
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
-        return "Intento de manipulación detectado. El voto no será registrado.", 400
+        return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
 
-    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar el número original del token en la sesión para validarlo en /enviar_voto
-    session['numero_token'] = numero
-
-    # Mostrar el formulario de votación
     return render_template("votar.html", numero=numero)
 
 
@@ -215,98 +209,74 @@ def votar():
 
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    try:
-        # Obtener el número desde el formulario
-        numero = request.form.get('numero')
-        numero_token = session.get('numero_token')  # Número que se guardó desde el token
+    numero = request.form.get('numero')
+    genero = request.form.get('genero')
+    pais = request.form.get('pais')
+    departamento = request.form.get('departamento')
+    provincia = request.form.get('provincia')
+    municipio = request.form.get('municipio')
+    recinto = request.form.get('recinto')
+    dia = request.form.get('dia_nacimiento')
+    mes = request.form.get('mes_nacimiento')
+    anio = request.form.get('anio_nacimiento')
+    pregunta1 = request.form.get('pregunta1')
+    candidato = request.form.get('candidato')
+    pregunta2 = request.form.get('pregunta2')
+    pregunta3 = request.form.get('pregunta3')
+    ci = request.form.get('ci') or None
 
-        if not numero_token or numero != numero_token:
-            return "El número no coincide con el enlace enviado. Debes ingresar tus datos reales.", 400
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-        # Resto de los campos
-        genero = request.form.get('genero')
-        pais = request.form.get('pais')
-        departamento = request.form.get('departamento')
-        provincia = request.form.get('provincia')
-        municipio = request.form.get('municipio')
-        recinto = request.form.get('recinto')
-        dia = request.form.get('dia_nacimiento')
-        mes = request.form.get('mes_nacimiento')
-        anio = request.form.get('anio_nacimiento')
-        pregunta1 = request.form.get('pregunta1')
-        candidato = request.form.get('candidato')
-        pregunta2 = request.form.get('pregunta2')
-        pregunta3 = request.form.get('pregunta3')
-        ci = request.form.get('ci') or None
+    if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+        return "Faltan campos obligatorios.", 400
 
-        ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+    if pregunta3 == "Sí" and not ci:
+        return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
 
-        # Verificar campos obligatorios
-        if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
-            return "Faltan campos obligatorios.", 400
-
-        if pregunta3 == "Sí" and not ci:
-            return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
-
-        # Validar fechas y CI
+    if ci:
         try:
-            dia = int(dia)
-            mes = int(mes)
-            anio = int(anio)
-            if ci:
-                ci = int(ci)
-        except ValueError:
-            return "Fecha de nacimiento o CI inválido.", 400
+            ci = int(ci)
+        except:
+            return "CI inválido.", 400
 
-        # Verificar si ya votó
-        if Voto.query.filter_by(numero=numero).first():
-            return render_template("voto_ya_registrado.html")
+    if Voto.query.filter_by(numero=numero).first():
+        return render_template("voto_ya_registrado.html")
 
-        # Verificar que el número esté todavía en NumeroTemporal
-        numero_temp = NumeroTemporal.query.filter_by(numero=numero).first()
-        if not numero_temp:
-            return "El número ya usó el enlace o es inválido.", 400
+    nuevo_voto = Voto(
+        numero=numero,
+        genero=genero,
+        pais=pais,
+        departamento=departamento,
+        provincia=provincia,
+        municipio=municipio,
+        recinto=recinto,
+        dia_nacimiento=int(dia),
+        mes_nacimiento=int(mes),
+        anio_nacimiento=int(anio),
+        pregunta1=pregunta1,
+        candidato=candidato,
+        pregunta2=pregunta2,
+        pregunta3=pregunta3,
+        ci=ci,
+        ip=ip
+    )
 
-        # Guardar el voto
-        nuevo_voto = Voto(
-            numero=numero,
-            genero=genero,
-            pais=pais,
-            departamento=departamento,
-            provincia=provincia,
-            municipio=municipio,
-            recinto=recinto,
-            dia_nacimiento=dia,
-            mes_nacimiento=mes,
-            anio_nacimiento=anio,
-            pregunta1=pregunta1,
-            candidato=candidato,
-            pregunta2=pregunta2,
-            pregunta3=pregunta3,
-            ci=ci,
-            ip=ip
-        )
+    db.session.add(nuevo_voto)
+    NumeroTemporal.query.filter_by(numero=numero).delete()
+    db.session.commit()
 
-        db.session.add(nuevo_voto)
-        db.session.delete(numero_temp)
-        db.session.commit()
-
-        return render_template("voto_exitoso.html",
-                               numero=numero,
-                               genero=genero,
-                               pais=pais,
-                               departamento=departamento,
-                               provincia=provincia,
-                               municipio=municipio,
-                               recinto=recinto,
-                               dia=dia,
-                               mes=mes,
-                               anio=anio,
-                               candidato=candidato)
-
-    except Exception as e:
-        print("❌ Error al guardar el voto:", str(e))
-        return "Error interno del servidor.", 500
+    return render_template("voto_exitoso.html",
+                           numero=numero,
+                           genero=genero,
+                           pais=pais,
+                           departamento=departamento,
+                           provincia=provincia,
+                           municipio=municipio,
+                           recinto=recinto,
+                           dia=dia,
+                           mes=mes,
+                           anio=anio,
+                           candidato=candidato)
 
 
 
