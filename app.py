@@ -86,14 +86,39 @@ def whatsapp_webhook():
         if "votar" in texto:
             numero_completo = "+" + numero
 
-            if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
-                db.session.add(NumeroTemporal(numero=numero_completo))
-                db.session.commit()
+            # Verificar si el número fue ingresado previamente en generar_link.html
+            temporal = NumeroTemporal.query.filter_by(numero=numero_completo).first()
+            if not temporal:
+                mensaje_error = (
+                    "⚠️ Tu número no coincide con el que fue ingresado en el sitio web.\n\n"
+                    "Por favor, vuelve a intentarlo correctamente desde:\n"
+                    "https://primariasbunker.org"
+                )
 
+                url = "https://waba-v2.360dialog.io/messages"
+                headers = {
+                    "Content-Type": "application/json",
+                    "D360-API-KEY": os.environ.get("WABA_TOKEN")
+                }
+                body = {
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": "+" + numero,
+                    "type": "text",
+                    "text": {
+                        "preview_url": False,
+                        "body": mensaje_error
+                    }
+                }
+
+                requests.post(url, headers=headers, json=body)
+                print("❌ Número no registrado previamente en la web.")
+                return "ok", 200
+
+            # Si el número sí fue registrado, generar token
             token_data = {
                 "numero": numero_completo,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
-
             }
             token = serializer.dumps(token_data)
 
@@ -131,6 +156,7 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 # ---------------------------
 # Página principal
