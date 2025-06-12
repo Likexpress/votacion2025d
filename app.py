@@ -80,13 +80,13 @@ def whatsapp_webhook():
         if not messages:
             return "ok", 200
 
-        numero = messages[0]['from']
+        numero = messages[0]['from']  # Número real de WhatsApp sin "+"
         texto = messages[0]['text']['body'].strip().lower()
 
         if "votar" in texto:
-            numero_completo = "+" + numero
+            numero_completo = "+" + numero  # Ej: +59176543210
 
-            # Datos para generar el token
+            # Generar token
             token_data = {
                 "numero": numero_completo,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
@@ -104,7 +104,7 @@ def whatsapp_webhook():
                 "Gracias por ser parte del cambio que Bolivia necesita."
             )
 
-            # Enviar mensaje por WhatsApp
+            # Enviar mensaje
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
@@ -126,23 +126,27 @@ def whatsapp_webhook():
             if r.status_code == 200:
                 print("✅ Enlace enviado correctamente.")
 
-                # Guardar o actualizar número confirmado
+                # Buscar registro anterior
                 registro = NumeroTemporal.query.filter_by(numero=numero_completo).first()
+
                 if not registro:
+                    # Si no existe, se crea y se guarda el número confirmado
                     nuevo = NumeroTemporal(numero=numero_completo, numero_confirmado=numero_completo)
                     db.session.add(nuevo)
                 else:
-                    registro.numero_confirmado = numero_completo  # Actualiza solo si ya existía
+                    # Si existe, actualizamos solo el campo numero_confirmado
+                    registro.numero_confirmado = numero_completo
 
                 db.session.commit()
 
             else:
-                print("❌ Error al enviar:", r.text)
+                print("❌ Error al enviar mensaje:", r.status_code, r.text)
 
     except Exception as e:
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 
