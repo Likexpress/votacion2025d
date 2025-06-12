@@ -89,7 +89,8 @@ def whatsapp_webhook():
 
             token_data = {
                 "numero": numero_completo,
-                "dominio": "sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net"
+                "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
+
             }
             token = serializer.dumps(token_data)
 
@@ -173,7 +174,8 @@ def votar():
         data = serializer.loads(token, max_age=600)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
-        dominio_esperado = "sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net"
+        dominio_esperado = os.environ.get("AZURE_DOMAIN")
+
 
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
