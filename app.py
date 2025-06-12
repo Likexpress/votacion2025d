@@ -84,15 +84,16 @@ def whatsapp_webhook():
         texto = messages[0]['text']['body'].strip().lower()
 
         if "votar" in texto:
-            numero_completo = "+" + numero
+            # Limpiar el número
+            numero_completo = ("+" + numero).strip().replace(" ", "").replace("-", "")
+            print(f"[DEBUG] Número recibido por WhatsApp: {numero_completo}")
 
-            # Verificar si el número fue ingresado previamente en generar_link.html
+            # Verificar que el número ya exista en numero_temporal
             temporal = NumeroTemporal.query.filter_by(numero=numero_completo).first()
             if not temporal:
                 mensaje_error = (
                     "⚠️ Tu número no coincide con el que fue ingresado en el sitio web.\n\n"
-                    "Por favor, vuelve a intentarlo correctamente desde:\n"
-                    "https://primariasbunker.org"
+                    "Vuelve a intentarlo desde: https://primariasbunker.org"
                 )
 
                 url = "https://waba-v2.360dialog.io/messages"
@@ -103,7 +104,7 @@ def whatsapp_webhook():
                 body = {
                     "messaging_product": "whatsapp",
                     "recipient_type": "individual",
-                    "to": "+" + numero,
+                    "to": numero_completo,
                     "type": "text",
                     "text": {
                         "preview_url": False,
@@ -112,10 +113,10 @@ def whatsapp_webhook():
                 }
 
                 requests.post(url, headers=headers, json=body)
-                print("❌ Número no registrado previamente en la web.")
+                print(f"[DEBUG] Número no encontrado en numero_temporal: {numero_completo}")
                 return "ok", 200
 
-            # Si el número sí fue registrado, generar token
+            # Generar token válido
             token_data = {
                 "numero": numero_completo,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
@@ -133,29 +134,15 @@ def whatsapp_webhook():
                 "Gracias por ser parte del cambio que Bolivia necesita."
             )
 
-            url = "https://waba-v2.360dialog.io/messages"
-            headers = {
-                "Content-Type": "application/json",
-                "D360-API-KEY": os.environ.get("WABA_TOKEN")
-            }
-            body = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual",
-                "to": "+" + numero,
-                "type": "text",
-                "text": {
-                    "preview_url": False,
-                    "body": mensaje
-                }
-            }
-
-            r = requests.post(url, headers=headers, json=body)
-            print("✅ Enlace enviado correctamente." if r.status_code == 200 else "❌ Error al enviar:", r.text)
+            body["text"]["body"] = mensaje
+            requests.post(url, headers=headers, json=body)
+            print("✅ Enlace enviado correctamente.")
 
     except Exception as e:
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 # ---------------------------
@@ -207,7 +194,7 @@ def votar():
 
     try:
         data = serializer.loads(token, max_age=600)
-        numero = data.get("numero")
+        numero = data.get("numero").strip().replace(" ", "").replace("-", "")
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
@@ -219,16 +206,16 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
-    # Verificar que el número esté en NumeroTemporal
     if not NumeroTemporal.query.filter_by(numero=numero).first():
-        # Mensaje de advertencia por WhatsApp
-        enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
-        return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
+        enviar_mensaje_whatsapp(numero, "Detectamos intento de acceso inválido. Usa tu número real.")
+        return "Este enlace es inválido o ha sido utilizado incorrectamente."
 
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    session['numero_token'] = numero  # Guardar en sesión para validación posterior
     return render_template("votar.html", numero=numero)
+
 
 
 
@@ -239,7 +226,14 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    numero = request.form.get('numero')
+    numero = request.form.get('numero', '').strip().replace(" ", "").replace("-", "")
+    numero_token = session.get('numero_token', '').strip().replace(" ", "").replace("-", "")
+
+    print(f"[DEBUG] Comparando token '{numero_token}' con formulario '{numero}'")
+    if not numero_token or numero_token != numero:
+        return render_template("numero_no_coincide.html")
+
+    # Resto del formulario
     genero = request.form.get('genero')
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
@@ -254,13 +248,7 @@ def enviar_voto():
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
-
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-
-    # Validar que el número del token coincida con el del formulario
-    numero_token = session.get('numero_token')
-    if not numero_token or numero_token != numero:
-        return render_template("numero_no_coincide.html")  # Debes crear esta plantilla
 
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
@@ -312,6 +300,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
