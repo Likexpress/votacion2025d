@@ -251,11 +251,18 @@ def enviar_voto():
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
 
+    # ✅ Nuevos campos: geolocalización
+    lat = request.form.get('latitud')
+    lon = request.form.get('longitud')
+
+    # IP del votante
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
+    # Validación de campos obligatorios
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
+    # Validar CI si se ofreció colaborar
     if pregunta3 == "Sí" and not ci:
         return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
 
@@ -265,9 +272,11 @@ def enviar_voto():
         except:
             return "CI inválido.", 400
 
+    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # Guardar el voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -279,6 +288,8 @@ def enviar_voto():
         dia_nacimiento=int(dia),
         mes_nacimiento=int(mes),
         anio_nacimiento=int(anio),
+        latitud=float(lat) if lat else None,
+        longitud=float(lon) if lon else None,
         pregunta1=pregunta1,
         candidato=candidato,
         pregunta2=pregunta2,
@@ -303,6 +314,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
