@@ -57,8 +57,10 @@ class Voto(db.Model):
 
 class NumeroTemporal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.String(50), unique=True, nullable=False)
+    numero = db.Column(db.String(50), unique=True, nullable=False)  # Número desde generar_link
+    numero_confirmado = db.Column(db.String(50), nullable=True)      # Número real desde WhatsApp
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 with app.app_context():
     db.create_all()
@@ -80,20 +82,32 @@ def whatsapp_webhook():
         if not messages:
             return "ok", 200
 
-        numero = messages[0]['from']
+        numero_real = messages[0]['from']            # Ej: 59172000000
         texto = messages[0]['text']['body'].strip().lower()
 
         if "votar" in texto:
-            numero_completo = "+" + numero
+            numero_formateado = "+" + numero_real    # Ej: +59172000000
 
-            if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
-                db.session.add(NumeroTemporal(numero=numero_completo))
-                db.session.commit()
+            # Buscar registro por número (generado desde generar_link)
+            registro = NumeroTemporal.query.filter_by(numero=numero_formateado).first()
 
+            if registro:
+                # Actualizar el número confirmado real desde WhatsApp
+                registro.numero_confirmado = numero_formateado
+            else:
+                # Crear nuevo si no existía (poco probable, pero por seguridad)
+                registro = NumeroTemporal(
+                    numero=numero_formateado,
+                    numero_confirmado=numero_formateado
+                )
+                db.session.add(registro)
+
+            db.session.commit()
+
+            # Preparar token
             token_data = {
-                "numero": numero_completo,
+                "numero": numero_formateado,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
-
             }
             token = serializer.dumps(token_data)
 
@@ -116,7 +130,7 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": "+" + numero,
+                "to": numero_formateado,
                 "type": "text",
                 "text": {
                     "preview_url": False,
@@ -131,6 +145,7 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 # ---------------------------
 # Página principal
@@ -194,15 +209,21 @@ def votar():
         return "Enlace inválido o alterado."
 
     # Verificar que el número esté en NumeroTemporal
-    if not NumeroTemporal.query.filter_by(numero=numero).first():
-        # Mensaje de advertencia por WhatsApp
+    registro = NumeroTemporal.query.filter_by(numero=numero).first()
+    if not registro:
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
 
+    # ✅ Validar que el número sea el mismo que escribió por WhatsApp
+    if registro.numero != registro.numero_confirmado:
+        return render_template("numero_no_coincide.html")
+
+    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
     return render_template("votar.html", numero=numero)
+
 
 
 
