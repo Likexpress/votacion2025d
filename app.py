@@ -57,10 +57,8 @@ class Voto(db.Model):
 
 class NumeroTemporal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.String(50), unique=True, nullable=False)  # Número desde generar_link
-    numero_confirmado = db.Column(db.String(50), nullable=True)      # Número real desde WhatsApp
+    numero = db.Column(db.String(50), unique=True, nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
-
 
 with app.app_context():
     db.create_all()
@@ -82,32 +80,20 @@ def whatsapp_webhook():
         if not messages:
             return "ok", 200
 
-        numero_real = messages[0]['from']            # Ej: 59172000000
+        numero = messages[0]['from']
         texto = messages[0]['text']['body'].strip().lower()
-        numero_confirmado = "+" + numero_real
 
         if "votar" in texto:
+            numero_completo = "+" + numero
 
-            # Buscar el primer registro que tenga numero_confirmado vacío
-            registro = NumeroTemporal.query.filter(
-                NumeroTemporal.numero_confirmado.is_(None)
-            ).order_by(NumeroTemporal.fecha.desc()).first()
-
-            if registro:
-                registro.numero_confirmado = numero_confirmado
-            else:
-                # Si no hay ninguno pendiente, guardar como nuevo
-                registro = NumeroTemporal(
-                    numero=numero_confirmado,
-                    numero_confirmado=numero_confirmado
-                )
-                db.session.add(registro)
-
-            db.session.commit()
+            if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
+                db.session.add(NumeroTemporal(numero=numero_completo))
+                db.session.commit()
 
             token_data = {
-                "numero": registro.numero,
+                "numero": numero_completo,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
+
             }
             token = serializer.dumps(token_data)
 
@@ -130,7 +116,7 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": numero_confirmado,
+                "to": "+" + numero,
                 "type": "text",
                 "text": {
                     "preview_url": False,
@@ -145,8 +131,6 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
-
-
 
 # ---------------------------
 # Página principal
@@ -210,21 +194,15 @@ def votar():
         return "Enlace inválido o alterado."
 
     # Verificar que el número esté en NumeroTemporal
-    registro = NumeroTemporal.query.filter_by(numero=numero).first()
-    if not registro:
+    if not NumeroTemporal.query.filter_by(numero=numero).first():
+        # Mensaje de advertencia por WhatsApp
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
 
-    # ✅ Validar que el número sea el mismo que escribió por WhatsApp
-    if registro.numero != registro.numero_confirmado:
-        return render_template("numero_no_coincide.html")
-
-    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
     return render_template("votar.html", numero=numero)
-
 
 
 
@@ -251,18 +229,11 @@ def enviar_voto():
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
 
-    # ✅ Nuevos campos: geolocalización
-    lat = request.form.get('latitud')
-    lon = request.form.get('longitud')
-
-    # IP del votante
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Validación de campos obligatorios
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
-    # Validar CI si se ofreció colaborar
     if pregunta3 == "Sí" and not ci:
         return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
 
@@ -272,11 +243,9 @@ def enviar_voto():
         except:
             return "CI inválido.", 400
 
-    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar el voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -288,8 +257,6 @@ def enviar_voto():
         dia_nacimiento=int(dia),
         mes_nacimiento=int(mes),
         anio_nacimiento=int(anio),
-        latitud=float(lat) if lat else None,
-        longitud=float(lon) if lon else None,
         pregunta1=pregunta1,
         candidato=candidato,
         pregunta2=pregunta2,
@@ -314,7 +281,6 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
-
 
 
 
