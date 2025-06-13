@@ -229,6 +229,10 @@ def enviar_voto():
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
 
+    # Coordenadas de geolocalización
+    latitud = request.form.get('latitud')
+    longitud = request.form.get('longitud')
+
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
@@ -257,12 +261,14 @@ def enviar_voto():
         dia_nacimiento=int(dia),
         mes_nacimiento=int(mes),
         anio_nacimiento=int(anio),
+        latitud=float(latitud) if latitud else None,
+        longitud=float(longitud) if longitud else None,
+        ip=ip,
         pregunta1=pregunta1,
         candidato=candidato,
         pregunta2=pregunta2,
         pregunta3=pregunta3,
-        ci=ci,
-        ip=ip
+        ci=ci
     )
 
     db.session.add(nuevo_voto)
@@ -281,6 +287,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
