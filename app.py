@@ -84,29 +84,29 @@ def whatsapp_webhook():
 
         numero_real = messages[0]['from']            # Ej: 59172000000
         texto = messages[0]['text']['body'].strip().lower()
+        numero_confirmado = "+" + numero_real
 
         if "votar" in texto:
-            numero_formateado = "+" + numero_real    # Ej: +59172000000
 
-            # Buscar registro por número (generado desde generar_link)
-            registro = NumeroTemporal.query.filter_by(numero=numero_formateado).first()
+            # Buscar el primer registro que tenga numero_confirmado vacío
+            registro = NumeroTemporal.query.filter(
+                NumeroTemporal.numero_confirmado.is_(None)
+            ).order_by(NumeroTemporal.fecha.desc()).first()
 
             if registro:
-                # Actualizar el número confirmado real desde WhatsApp
-                registro.numero_confirmado = numero_formateado
+                registro.numero_confirmado = numero_confirmado
             else:
-                # Crear nuevo si no existía (poco probable, pero por seguridad)
+                # Si no hay ninguno pendiente, guardar como nuevo
                 registro = NumeroTemporal(
-                    numero=numero_formateado,
-                    numero_confirmado=numero_formateado
+                    numero=numero_confirmado,
+                    numero_confirmado=numero_confirmado
                 )
                 db.session.add(registro)
 
             db.session.commit()
 
-            # Preparar token
             token_data = {
-                "numero": numero_formateado,
+                "numero": registro.numero,
                 "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
             }
             token = serializer.dumps(token_data)
@@ -130,7 +130,7 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": numero_formateado,
+                "to": numero_confirmado,
                 "type": "text",
                 "text": {
                     "preview_url": False,
@@ -145,6 +145,7 @@ def whatsapp_webhook():
         print("❌ Error procesando mensaje:", str(e))
 
     return "ok", 200
+
 
 
 # ---------------------------
