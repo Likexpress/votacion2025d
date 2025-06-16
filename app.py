@@ -219,13 +219,13 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    numero = request.form.get('numero')
-    numero_token = request.form.get('numero_token')  # campo oculto enviado desde votar.html
+    # Recuperar número desde sesión, no desde el formulario
+    numero = session.get('numero_token')
 
-    # Validación crítica: el número del formulario debe coincidir con el número validado en el token
-    if numero != numero_token:
-        return "Número inválido o manipulado. El voto ha sido rechazado.", 400
+    if not numero:
+        return "Sesión expirada o acceso no autorizado. Solicita un nuevo enlace.", 400
 
+    # Datos del formulario
     genero = request.form.get('genero')
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
@@ -248,7 +248,7 @@ def enviar_voto():
     # IP del usuario
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Validaciones básicas
+    # Validaciones
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
@@ -291,6 +291,9 @@ def enviar_voto():
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
+    # Limpiar número de sesión para evitar reutilización
+    session.pop('numero_token', None)
+
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -303,6 +306,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
