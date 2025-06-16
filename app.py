@@ -185,25 +185,23 @@ def votar():
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
-        # Guardar en sesión
-        session['numero_token'] = numero
-
-        # Validar que el número exista en NumeroTemporal
-        if not NumeroTemporal.query.filter_by(numero=numero).first():
-            enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
-            return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
-
-        if Voto.query.filter_by(numero=numero).first():
-            return render_template("voto_ya_registrado.html")
-
-        return render_template("votar.html", numero=numero)
-
     except SignatureExpired:
         return "El enlace ha expirado. Solicita uno nuevo."
     except BadSignature:
         return "Enlace inválido o alterado."
-    except Exception as e:
-        return f"Error interno inesperado: {str(e)}", 500
+
+    # Verificar que el número esté en NumeroTemporal (aún válido)
+    if not NumeroTemporal.query.filter_by(numero=numero).first():
+        enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
+        return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
+
+    # Verificar si ya votó
+    if Voto.query.filter_by(numero=numero).first():
+        return render_template("voto_ya_registrado.html")
+
+    # Renderizar formulario con número verificado para reenviar en número_token
+    return render_template("votar.html", numero=numero)
+
 
 
 
@@ -218,11 +216,11 @@ def votar():
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
     numero = request.form.get('numero')
+    numero_token = request.form.get('numero_token')  # campo oculto enviado desde votar.html
 
-    # Validación crítica: comparar número recibido con el del token en sesión
-    numero_token = session.get('numero_token')
-    if not numero_token or numero != numero_token:
-        return "Error de validación. El número no coincide con el token.", 400
+    # Validación crítica: el número del formulario debe coincidir con el número validado en el token
+    if numero != numero_token:
+        return "Número inválido o manipulado. El voto ha sido rechazado.", 400
 
     genero = request.form.get('genero')
     pais = request.form.get('pais')
@@ -239,11 +237,14 @@ def enviar_voto():
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
 
+    # Coordenadas de geolocalización
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
+
+    # IP del usuario
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Validación de campos obligatorios
+    # Validaciones básicas
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
@@ -253,13 +254,14 @@ def enviar_voto():
     if ci:
         try:
             ci = int(ci)
-        except ValueError:
+        except:
             return "CI inválido.", 400
 
-    # Revalidar que no haya voto duplicado
+    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # Guardar el nuevo voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -285,9 +287,6 @@ def enviar_voto():
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
-    # Limpieza de sesión para evitar reutilización
-    session.pop('numero_token', None)
-
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -300,6 +299,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
