@@ -12,6 +12,7 @@ from paises import PAISES_CODIGOS
 from flask import session
 from flask import render_template
 
+
 # ---------------------------
 # Configuración inicial
 # ---------------------------
@@ -182,6 +183,7 @@ def votar():
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
+        # Validación de dominio
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
@@ -199,8 +201,12 @@ def votar():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Renderizar formulario con número verificado para reenviar en número_token
+    # Guardar el número del token validado en sesión para comparación posterior segura
+    session['numero_token'] = numero
+
+    # Renderizar formulario con número para mostrarlo y usarlo en el campo oculto
     return render_template("votar.html", numero=numero)
+
 
 
 
@@ -219,11 +225,11 @@ def votar():
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
     numero = request.form.get('numero')
-    numero_token = request.form.get('numero_token')  # campo oculto enviado desde votar.html
+    numero_token = session.get('numero_token')  # se extrae directamente de la sesión
 
-    # Validación crítica: el número del formulario debe coincidir con el número validado en el token
-    if numero != numero_token:
-        return "Número inválido o manipulado. El voto ha sido rechazado.", 400
+    # Validación crítica: el número del formulario debe coincidir con el token válido almacenado en sesión
+    if not numero_token or numero != numero_token:
+        return "Acceso denegado: número manipulado o sin token válido.", 403
 
     genero = request.form.get('genero')
     pais = request.form.get('pais')
@@ -240,11 +246,9 @@ def enviar_voto():
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
 
-    # Coordenadas de geolocalización
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
 
-    # IP del usuario
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
     # Validaciones básicas
@@ -290,6 +294,9 @@ def enviar_voto():
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
+    # Eliminar el número de la sesión después del voto para impedir reuso
+    session.pop('numero_token', None)
+
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -302,6 +309,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
