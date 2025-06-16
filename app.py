@@ -190,7 +190,7 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
-    # Verificar que el número esté en NumeroTemporal (aún válido)
+    # Verificar que el número esté aún registrado como válido
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
@@ -199,8 +199,12 @@ def votar():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Renderizar formulario con número verificado para reenviar en número_token
+    # Guardar en la sesión el número autorizado
+    session['numero_token'] = numero
+
+    # Renderizar el formulario con el número visible pero no manipulable
     return render_template("votar.html", numero=numero)
+
 
 
 
