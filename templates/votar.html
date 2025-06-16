@@ -22,9 +22,7 @@
 
     <div class="card p-4">
       <form method="post" action="/enviar_voto" class="needs-validation" novalidate>
-
-        <!-- Campo oculto con el número autorizado desde la sesión -->
-        <input type="hidden" name="numero_token" value="{{ numero }}">
+        <input type="hidden" name="numero" value="{{ numero }}">
         <input type="hidden" name="latitud" id="latitud">
         <input type="hidden" name="longitud" id="longitud">
 
@@ -151,6 +149,7 @@
     async function cargarDatos() {
       const res = await fetch("/api/recintos");
       recintosData = await res.json();
+
       const paises = [...new Set(recintosData.map(r => r.nombre_pais))];
       paises.forEach(p => $('#pais').append(new Option(p, p)));
       $('#pais').val('Bolivia').trigger('change');
@@ -228,6 +227,7 @@
       $('#recinto').select2();
     });
 
+    // Geolocalización al cargar
     window.onload = function () {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -240,6 +240,8 @@
           },
           { timeout: 10000 }
         );
+      } else {
+        console.warn("Geolocalización no soportada.");
       }
     };
   </script>
