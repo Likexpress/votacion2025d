@@ -177,11 +177,13 @@ def votar():
         return "Acceso no válido."
 
     try:
+        # Decodificar el token con expiración de 10 minutos
         data = serializer.loads(token, max_age=600)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
+        # Verificación estricta de dominio
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
@@ -193,15 +195,18 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
-    # Verificar que el número esté en NumeroTemporal
+    # Verificar que el número aún esté registrado como temporal
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
 
+    # Evitar voto duplicado
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
+    # Renderizar formulario solo si todo es válido
     return render_template("votar.html", numero=numero)
+
 
 
 
@@ -215,7 +220,7 @@ def votar():
 def enviar_voto():
     numero = request.form.get('numero')
 
-    # Validación crítica: verificar que el número coincida con el token
+    # Validación crítica: comparar número recibido con el del token en sesión
     numero_token = session.get('numero_token')
     if not numero_token or numero != numero_token:
         return "Error de validación. El número no coincide con el token.", 400
@@ -235,12 +240,11 @@ def enviar_voto():
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
 
-    # Coordenadas de geolocalización
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
-
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
+    # Validación de campos obligatorios
     if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
@@ -250,9 +254,10 @@ def enviar_voto():
     if ci:
         try:
             ci = int(ci)
-        except:
+        except ValueError:
             return "CI inválido.", 400
 
+    # Revalidar que no haya voto duplicado
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
@@ -281,7 +286,7 @@ def enviar_voto():
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
-    # Limpieza de sesión
+    # Limpieza de sesión para evitar reutilización
     session.pop('numero_token', None)
 
     return render_template("voto_exitoso.html",
@@ -296,6 +301,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
