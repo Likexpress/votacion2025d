@@ -177,35 +177,34 @@ def votar():
         return "Acceso no válido."
 
     try:
-        # Decodificar el token con expiración de 10 minutos
         data = serializer.loads(token, max_age=600)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
-        # Verificación estricta de dominio
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
-        # Guardar el número del token en la sesión
+        # Guardar en sesión
         session['numero_token'] = numero
+
+        # Validar que el número exista en NumeroTemporal
+        if not NumeroTemporal.query.filter_by(numero=numero).first():
+            enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
+            return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
+
+        if Voto.query.filter_by(numero=numero).first():
+            return render_template("voto_ya_registrado.html")
+
+        return render_template("votar.html", numero=numero)
 
     except SignatureExpired:
         return "El enlace ha expirado. Solicita uno nuevo."
     except BadSignature:
         return "Enlace inválido o alterado."
+    except Exception as e:
+        return f"Error interno inesperado: {str(e)}", 500
 
-    # Verificar que el número aún esté registrado como temporal
-    if not NumeroTemporal.query.filter_by(numero=numero).first():
-        enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
-        return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
-
-    # Evitar voto duplicado
-    if Voto.query.filter_by(numero=numero).first():
-        return render_template("voto_ya_registrado.html")
-
-    # Renderizar formulario solo si todo es válido
-    return render_template("votar.html", numero=numero)
 
 
 
