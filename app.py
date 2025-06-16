@@ -19,8 +19,11 @@ from flask import render_template
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "clave-super-secreta")  # necesaria para sesiones Flask
+
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
 serializer = URLSafeTimedSerializer(SECRET_KEY)
+
 
 # ---------------------------
 # Configuración de la base de datos
