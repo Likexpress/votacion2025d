@@ -174,36 +174,39 @@ def generar_link():
 def votar():
     token = request.args.get('token')
     if not token:
-        return "Acceso no válido."
+        return "Acceso no válido.", 400
 
     try:
         data = serializer.loads(token, max_age=600)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
-        dominio_esperado = os.environ.get("AZURE_DOMAIN")
+        dominio_esperado = os.environ.get("AZURE_DOMAIN", "sistemadevotacion2025-gqh8hhatgtgufhab.brazilsouth-01.azurewebsites.net")  # valor por defecto
 
-        if dominio_token != dominio_esperado:
-            return "Dominio inválido para este enlace."
+        if not dominio_token or dominio_token != dominio_esperado:
+            return "Dominio inválido para este enlace.", 400
 
     except SignatureExpired:
-        return "El enlace ha expirado. Solicita uno nuevo."
+        return "El enlace ha expirado. Solicita uno nuevo.", 400
     except BadSignature:
-        return "Enlace inválido o alterado."
+        return "Enlace inválido o alterado.", 400
+    except Exception as e:
+        return f"Error inesperado: {str(e)}", 500
 
-    # Verificar que el número esté aún registrado como válido
-    if not NumeroTemporal.query.filter_by(numero=numero).first():
-        enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
-        return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
+    try:
+        temp = NumeroTemporal.query.filter_by(numero=numero).first()
+        if not temp:
+            enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
+            return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso.", 400
 
-    # Verificar si ya votó
-    if Voto.query.filter_by(numero=numero).first():
-        return render_template("voto_ya_registrado.html")
+        if Voto.query.filter_by(numero=numero).first():
+            return render_template("voto_ya_registrado.html")
 
-    # Guardar en la sesión el número autorizado
-    session['numero_token'] = numero
+        session['numero_token'] = numero
+        return render_template("votar.html", numero=numero)
+    
+    except Exception as e:
+        return f"Error en verificación de número: {str(e)}", 500
 
-    # Renderizar el formulario con el número visible pero no manipulable
-    return render_template("votar.html", numero=numero)
 
 
 
