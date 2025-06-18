@@ -4,14 +4,21 @@
   <meta charset="UTF-8">
   <title>Inicio de Votación</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Estilos -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+  <!-- Meta Description -->
   <meta name="description" content="Vota en las Primarias Bolivia 2025. Tu voz define el futuro.">
+
+  <!-- Open Graph -->
   <meta property="og:title" content="Elecciones Ciudadanas 2025" />
   <meta property="og:description" content="Participa en las Primarias y elige al candidato de oposición que representará a Bolivia." />
   <meta property="og:image" content="{{ request.host_url }}static/img/og-image.jpg" />
   <meta property="og:url" content="{{ request.host_url }}generar_link" />
   <meta property="og:type" content="website" />
+
   <style>
     body {
       background-color: #f8f9fa;
@@ -92,7 +99,7 @@
     </div>
 
     <!-- FORMULARIO -->
-    <form method="POST" action="{{ url_for('generar_link') }}">
+    <form method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div class="mb-3 text-start">
@@ -144,7 +151,7 @@
 
     form.addEventListener("submit", function () {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando...`;
+      submitBtn.innerHTML = <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando...;
     });
 
     document.getElementById("numero").addEventListener("input", function () {
