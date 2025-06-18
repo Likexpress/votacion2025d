@@ -11,6 +11,8 @@ import csv
 from paises import PAISES_CODIGOS
 from flask import session
 from flask import render_template
+from flask_wtf.csrf import CSRFProtect
+
 
 
 # ---------------------------
@@ -18,11 +20,19 @@ from flask import render_template
 # ---------------------------
 load_dotenv()
 
-app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "clave-super-secreta")  # necesaria para sesiones Flask
+from flask_wtf.csrf import CSRFProtect
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
-serializer = URLSafeTimedSerializer(SECRET_KEY)
+app = Flask(__name__)
+
+# Usar una sola clave secreta para todo (CSRF, sesiones y token serializer)
+clave_secreta = os.environ.get("SECRET_KEY", "clave-super-secreta")
+app.config['SECRET_KEY'] = clave_secreta
+app.secret_key = clave_secreta  # Flask la usa para sesiones
+csrf = CSRFProtect(app)         # Activar protección CSRF
+
+# Serializer para tokens seguros (por ejemplo: enlaces temporales)
+serializer = URLSafeTimedSerializer(clave_secreta)
+
 
 
 # ---------------------------
