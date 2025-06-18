@@ -13,17 +13,17 @@ from flask import session
 from flask import render_template
 
 
-
-
 # ---------------------------
 # Configuración inicial
 # ---------------------------
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "clave-super-secreta")  # necesaria para sesiones Flask
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
 serializer = URLSafeTimedSerializer(SECRET_KEY)
+
 
 # ---------------------------
 # Configuración de la base de datos
@@ -33,7 +33,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-
 
 # ---------------------------
 # Modelos
@@ -208,12 +207,8 @@ def votar():
     # Guardar el número del token validado en sesión para comparación posterior segura
     session['numero_token'] = numero
 
-    # Renderizar formulario y enviar el token también como campo oculto
-    return render_template("votar.html", numero=numero, token=token)
-
-
-
-
+    # Renderizar formulario con número para mostrarlo y usarlo en el campo oculto
+    return render_template("votar.html", numero=numero)
 
 
 
@@ -232,12 +227,13 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    # Obtener el número validado desde la sesión
-    numero = session.get('numero_token')
-    if not numero:
-        return "Acceso denegado: sin sesión válida o token expirado.", 403
+    numero = request.form.get('numero')
+    numero_token = session.get('numero_token')  # se extrae directamente de la sesión
 
-    # Extraer el resto de los datos del formulario
+    # Validación crítica: el número del formulario debe coincidir con el token válido almacenado en sesión
+    if not numero_token or numero != numero_token:
+        return "Acceso denegado: número manipulado o sin token válido.", 403
+
     genero = request.form.get('genero')
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
@@ -256,12 +252,10 @@ def enviar_voto():
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
 
-    # Obtener IP real del usuario
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Validación de campos obligatorios
-    if not all([genero, pais, departamento, provincia, municipio, recinto,
-                dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+    # Validaciones básicas
+    if not all([numero, genero, pais, departamento, provincia, municipio, recinto, dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
 
     if pregunta3 == "Sí" and not ci:
@@ -277,7 +271,7 @@ def enviar_voto():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar el voto en la base de datos
+    # Guardar el nuevo voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -303,10 +297,9 @@ def enviar_voto():
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
-    # Eliminar número de la sesión para impedir reuso
+    # Eliminar el número de la sesión después del voto para impedir reuso
     session.pop('numero_token', None)
 
-    # Mostrar pantalla de voto exitoso
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -319,13 +312,6 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
-
-
-
-
-
-
-
 
 
 
