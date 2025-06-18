@@ -78,9 +78,6 @@ with app.app_context():
 # ---------------------------
 # Webhook para WhatsApp
 # ---------------------------
-# ---------------------------
-# Webhook para WhatsApp
-# ---------------------------
 @app.route('/whatsapp', methods=['POST'])
 def whatsapp_webhook():
     data = request.json
@@ -105,18 +102,15 @@ def whatsapp_webhook():
                 db.session.add(NumeroTemporal(numero=numero_completo))
                 db.session.commit()
 
-            # Generar token solo con número (sin dominio)
             token_data = {
-                "numero": numero_completo
+                "numero": numero_completo,
+                "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
+
             }
             token = serializer.dumps(token_data)
 
-            # Usar el dominio real del host
-            dominio = request.host_url.rstrip('/')
+            dominio = os.environ.get("AZURE_DOMAIN") or request.host_url.rstrip('/')
             link = f"{dominio}/votar?token={token}"
-
-            print("🌐 Dominio generado:", dominio)
-            print("🔗 Link generado:", link)
 
             mensaje = (
                 "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
@@ -134,7 +128,7 @@ def whatsapp_webhook():
             body = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": numero_completo,
+                "to": "+" + numero,
                 "type": "text",
                 "text": {
                     "preview_url": False,
