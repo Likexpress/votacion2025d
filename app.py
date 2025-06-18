@@ -181,21 +181,22 @@ def votar():
         return "Acceso no válido."
 
     try:
+        # Validar el token
         data = serializer.loads(token, max_age=600)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
-        # Validación de dominio
+        # Validar dominio de origen
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
     except SignatureExpired:
         return "El enlace ha expirado. Solicita uno nuevo."
     except BadSignature:
-        return "Enlace inválido o alterado."
+        return "Enlace inválido o manipulado."
 
-    # Verificar que el número esté en NumeroTemporal (aún válido)
+    # Verificar que el número aún está en NumeroTemporal
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
@@ -204,11 +205,12 @@ def votar():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar el número del token validado en sesión para comparación posterior segura
+    # Guardar número en sesión
     session['numero_token'] = numero
 
-    # Renderizar formulario con número para mostrarlo y usarlo en el campo oculto
-    return render_template("votar.html", numero=numero)
+    # Renderizar formulario con el token incluido (por si se pierde la sesión)
+    return render_template("votar.html", numero=numero, token=token)
+
 
 
 
