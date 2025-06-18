@@ -11,7 +11,7 @@ import csv
 from paises import PAISES_CODIGOS
 from flask import session
 from flask import render_template
-from flask_wtf.csrf import CSRFProtect
+
 
 
 
@@ -324,6 +324,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
