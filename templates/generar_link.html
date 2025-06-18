@@ -99,7 +99,11 @@
       Tu participación no solo es un derecho: es una señal de esperanza, compromiso y cambio para Bolivia.
     </div>
 
+
     <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      
       <div class="mb-3 text-start">
         <label for="pais" class="form-label">País</label>
         <select name="pais" id="pais" class="form-select" required>
