@@ -11,18 +11,19 @@ import csv
 from paises import PAISES_CODIGOS
 from flask import session
 from flask import render_template
+from flask_wtf import CSRFProtect  
 
 
 # ---------------------------
 # Configuración inicial
 # ---------------------------
 load_dotenv()
-
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "clave-super-secreta")  # necesaria para sesiones Flask
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
-serializer = URLSafeTimedSerializer(SECRET_KEY)
+app.secret_key = SECRET_KEY
+
+csrf = CSRFProtect(app)  # ✅ Protección CSRF
 
 
 # ---------------------------
@@ -229,7 +230,7 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    # Obtener el número validado desde la sesión
+    # Verifica que el número de sesión esté presente
     numero = session.get('numero_token')
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
@@ -252,10 +253,10 @@ def enviar_voto():
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
 
-    # Obtener IP real
+    # IP del usuario
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Validación de campos obligatorios
+    # Validar campos requeridos
     if not all([genero, pais, departamento, provincia, municipio, recinto,
                 dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return "Faltan campos obligatorios.", 400
@@ -295,14 +296,15 @@ def enviar_voto():
         ci=ci
     )
 
+    # Guardar en la base de datos y limpiar número temporal
     db.session.add(nuevo_voto)
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
-    # Limpiar sesión para evitar reuso
+    # Limpiar sesión
     session.pop('numero_token', None)
 
-    # Mostrar confirmación
+    # Mostrar pantalla de éxito
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -315,6 +317,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
