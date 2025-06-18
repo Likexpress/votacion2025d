@@ -207,8 +207,9 @@ def votar():
     # Guardar el número del token validado en sesión para comparación posterior segura
     session['numero_token'] = numero
 
-    # Renderizar formulario con número para mostrarlo y usarlo en el campo oculto
-    return render_template("votar.html", numero=numero)
+    # Renderizar formulario y enviar el token también como campo oculto
+    return render_template("votar.html", numero=numero, token=token)
+
 
 
 
