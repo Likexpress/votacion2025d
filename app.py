@@ -1,4 +1,3 @@
-from flask import Flask, request, render_template, redirect, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from datetime import datetime
@@ -11,7 +10,11 @@ import csv
 from paises import PAISES_CODIGOS
 from flask import session
 from flask import render_template
-from flask_wtf import CSRFProtect  
+from flask_wtf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect
+from flask import Flask, request, render_template, redirect, jsonify, session
+
+
 
 
 # ---------------------------
@@ -19,6 +22,10 @@ from flask_wtf import CSRFProtect
 # ---------------------------
 load_dotenv()
 app = Flask(__name__)
+app.secret_key = 'supersecreto'
+serializer = URLSafeTimedSerializer(app.secret_key)
+
+
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
 app.secret_key = SECRET_KEY
@@ -71,15 +78,22 @@ with app.app_context():
 # ---------------------------
 # Webhook para WhatsApp
 # ---------------------------
-@app.route('/whatsapp', methods=['POST'])
-def whatsapp_webhook():
-    data = request.json
-    print("📥 JSON recibido:")
-    print(json.dumps(data, indent=2))
+from flask import request, jsonify
+from flask_wtf.csrf import CSRFProtect
 
+csrf = CSRFProtect(app)
+
+@app.route('/whatsapp', methods=['POST'])
+@csrf.exempt  # EXCLUYE protección CSRF en este endpoint
+def whatsapp_webhook():
     try:
-        entry = data['entry'][0]
-        value = entry['changes'][0]['value']
+        data = request.get_json()
+        print("📥 JSON recibido:")
+        print(json.dumps(data, indent=2))
+
+        entry = data.get('entry', [])[0]
+        changes = entry.get('changes', [])[0]
+        value = changes.get('value', {})
         messages = value.get('messages')
 
         if not messages:
@@ -87,22 +101,22 @@ def whatsapp_webhook():
 
         numero = messages[0]['from']
         texto = messages[0]['text']['body'].strip().lower()
+        numero_completo = "+" + numero
 
         if "votar" in texto:
-            numero_completo = "+" + numero
-
+            # Verifica si ya está registrado en NumeroTemporal
             if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
-                db.session.add(NumeroTemporal(numero=numero_completo))
+                nuevo = NumeroTemporal(numero=numero_completo)
+                db.session.add(nuevo)
                 db.session.commit()
 
+            # Generar token seguro
+            dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
             token_data = {
                 "numero": numero_completo,
-                "dominio": os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
-
+                "dominio": dominio
             }
             token = serializer.dumps(token_data)
-
-            dominio = os.environ.get("AZURE_DOMAIN") or request.host_url.rstrip('/')
             link = f"{dominio}/votar?token={token}"
 
             mensaje = (
@@ -113,15 +127,16 @@ def whatsapp_webhook():
                 "Gracias por ser parte del cambio que Bolivia necesita."
             )
 
+            # Enviar mensaje vía WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
                 "D360-API-KEY": os.environ.get("WABA_TOKEN")
             }
-            body = {
+            payload = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
-                "to": "+" + numero,
+                "to": numero_completo,
                 "type": "text",
                 "text": {
                     "preview_url": False,
@@ -129,13 +144,17 @@ def whatsapp_webhook():
                 }
             }
 
-            r = requests.post(url, headers=headers, json=body)
-            print("✅ Enlace enviado correctamente." if r.status_code == 200 else "❌ Error al enviar:", r.text)
+            respuesta = requests.post(url, headers=headers, json=payload)
+            if respuesta.status_code == 200:
+                print("✅ Enlace enviado correctamente.")
+            else:
+                print(f"❌ Error al enviar mensaje WhatsApp: {respuesta.status_code} - {respuesta.text}")
 
     except Exception as e:
-        print("❌ Error procesando mensaje:", str(e))
+        print("❌ Error procesando webhook:", str(e))
 
     return "ok", 200
+
 
 # ---------------------------
 # Página principal
