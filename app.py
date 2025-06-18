@@ -225,6 +225,7 @@ def votar():
 
 
 
+
 # ---------------------------
 # Enviar voto
 # ---------------------------
@@ -316,6 +317,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
