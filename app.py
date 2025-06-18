@@ -21,16 +21,14 @@ from flask import Flask, request, render_template, redirect, jsonify, session
 # Configuración inicial
 # ---------------------------
 load_dotenv()
-app = Flask(__name__)
-app.secret_key = 'supersecreto'
-serializer = URLSafeTimedSerializer(app.secret_key)
-
-
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
+app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 csrf = CSRFProtect(app)  # ✅ Protección CSRF
+serializer = URLSafeTimedSerializer(SECRET_KEY)  # ✅ Crear serializer después de definir la clave
+
 
 
 # ---------------------------
@@ -75,16 +73,8 @@ class NumeroTemporal(db.Model):
 with app.app_context():
     db.create_all()
 
-# ---------------------------
-# Webhook para WhatsApp
-# ---------------------------
-from flask import request, jsonify
-from flask_wtf.csrf import CSRFProtect
-
-csrf = CSRFProtect(app)
-
 @app.route('/whatsapp', methods=['POST'])
-@csrf.exempt  # EXCLUYE protección CSRF en este endpoint
+@csrf.exempt  # Excluye este endpoint de la protección CSRF
 def whatsapp_webhook():
     try:
         data = request.get_json()
@@ -99,18 +89,19 @@ def whatsapp_webhook():
         if not messages:
             return "ok", 200
 
-        numero = messages[0]['from']
+        numero = messages[0]['from']  # Ej: 591XXXXXXXX
         texto = messages[0]['text']['body'].strip().lower()
         numero_completo = "+" + numero
 
         if "votar" in texto:
-            # Verifica si ya está registrado en NumeroTemporal
-            if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
+            # Verificar si ya está registrado en NumeroTemporal
+            existente = NumeroTemporal.query.filter_by(numero=numero_completo).first()
+            if not existente:
                 nuevo = NumeroTemporal(numero=numero_completo)
                 db.session.add(nuevo)
                 db.session.commit()
 
-            # Generar token seguro
+            # Generar el enlace de votación
             dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
             token_data = {
                 "numero": numero_completo,
@@ -118,6 +109,8 @@ def whatsapp_webhook():
             }
             token = serializer.dumps(token_data)
             link = f"{dominio}/votar?token={token}"
+
+            print(f"🔗 Enlace generado: {link}")
 
             mensaje = (
                 "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
@@ -127,7 +120,6 @@ def whatsapp_webhook():
                 "Gracias por ser parte del cambio que Bolivia necesita."
             )
 
-            # Enviar mensaje vía WhatsApp
             url = "https://waba-v2.360dialog.io/messages"
             headers = {
                 "Content-Type": "application/json",
