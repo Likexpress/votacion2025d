@@ -8,4 +8,4 @@ SQLAlchemy
 Flask_SQLAlchemy
 python-dotenv
 flask-migrate
-Flask-WTF>=1.0.1
+
