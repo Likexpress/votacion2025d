@@ -20,20 +20,10 @@ from flask import render_template
 # ---------------------------
 load_dotenv()
 
-from flask_wtf.csrf import CSRFProtect
-
 app = Flask(__name__)
 
-# Usar una sola clave secreta para todo (CSRF, sesiones y token serializer)
-clave_secreta = os.environ.get("SECRET_KEY", "clave-super-secreta")
-app.config['SECRET_KEY'] = clave_secreta
-app.secret_key = clave_secreta  # Flask la usa para sesiones
-csrf = CSRFProtect(app)         # Activar protección CSRF
-
-# Serializer para tokens seguros (por ejemplo: enlaces temporales)
-serializer = URLSafeTimedSerializer(clave_secreta)
-
-
+SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
+serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 # ---------------------------
 # Configuración de la base de datos
@@ -43,6 +33,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
 
 # ---------------------------
 # Modelos
