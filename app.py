@@ -20,8 +20,6 @@ from flask_wtf.csrf import CSRFProtect
 # ---------------------------
 load_dotenv()
 
-from flask_wtf.csrf import CSRFProtect
-
 app = Flask(__name__)
 
 # Usar una sola clave secreta para todo (CSRF, sesiones y token serializer)
