@@ -22,9 +22,10 @@
 
     <div class="card p-4">
       <form method="post" action="/enviar_voto" class="needs-validation" novalidate>
+        <input type="hidden" name="token" value="{{ token }}">
+
         <input type="hidden" name="latitud" id="latitud">
         <input type="hidden" name="longitud" id="longitud">
-        <input type="hidden" name="token" value="{{ token }}">
 
         <!-- Género -->
         <div class="mb-3">
@@ -227,6 +228,7 @@
       $('#recinto').select2();
     });
 
+    // Geolocalización al cargar
     window.onload = function () {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
