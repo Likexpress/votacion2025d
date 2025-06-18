@@ -237,7 +237,7 @@ def enviar_voto():
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
 
-    # Extraer datos del formulario
+    # Extraer el resto de los datos del formulario
     genero = request.form.get('genero')
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
@@ -252,10 +252,11 @@ def enviar_voto():
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
+
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
 
-    # Obtener IP real
+    # Obtener IP real del usuario
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
     # Validación de campos obligatorios
@@ -276,7 +277,7 @@ def enviar_voto():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar el nuevo voto
+    # Guardar el voto en la base de datos
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -302,10 +303,10 @@ def enviar_voto():
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
-    # Limpiar sesión para evitar reuso
+    # Eliminar número de la sesión para impedir reuso
     session.pop('numero_token', None)
 
-    # Mostrar confirmación
+    # Mostrar pantalla de voto exitoso
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -318,6 +319,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
