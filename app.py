@@ -181,22 +181,21 @@ def votar():
         return "Acceso no válido."
 
     try:
-        # Validar el token
         data = serializer.loads(token, max_age=600)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
-        # Validar dominio de origen
+        # Validación de dominio
         if dominio_token != dominio_esperado:
             return "Dominio inválido para este enlace."
 
     except SignatureExpired:
         return "El enlace ha expirado. Solicita uno nuevo."
     except BadSignature:
-        return "Enlace inválido o manipulado."
+        return "Enlace inválido o alterado."
 
-    # Verificar que el número aún está en NumeroTemporal
+    # Verificar que el número esté en NumeroTemporal (aún válido)
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
         return "Este enlace ya fue utilizado, es inválido o ha intentado manipular el proceso."
@@ -205,11 +204,12 @@ def votar():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar número en sesión
+    # Guardar el número del token validado en sesión para comparación posterior segura
     session['numero_token'] = numero
 
-    # Renderizar formulario con el token incluido (por si se pierde la sesión)
+    # Renderizar formulario y enviar el token también como campo oculto
     return render_template("votar.html", numero=numero, token=token)
+
 
 
 
@@ -234,7 +234,7 @@ def enviar_voto():
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
 
-    # Extraer el resto de los datos del formulario
+    # Extraer datos del formulario
     genero = request.form.get('genero')
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
@@ -249,11 +249,10 @@ def enviar_voto():
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
-
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
 
-    # Obtener IP real del usuario
+    # Obtener IP real
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
     # Validación de campos obligatorios
@@ -274,7 +273,7 @@ def enviar_voto():
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar el voto en la base de datos
+    # Guardar el nuevo voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -300,10 +299,10 @@ def enviar_voto():
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
-    # Eliminar número de la sesión para impedir reuso
+    # Limpiar sesión para evitar reuso
     session.pop('numero_token', None)
 
-    # Mostrar pantalla de voto exitoso
+    # Mostrar confirmación
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -316,6 +315,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
