@@ -250,6 +250,13 @@
         console.warn("Geolocalización no soportada.");
       }
     };
+
+    // Evitar múltiples envíos del formulario
+    document.querySelector('form').addEventListener('submit', function (e) {
+      const boton = this.querySelector('button[type="submit"]');
+      boton.disabled = true;
+      boton.innerText = 'Enviando...';
+    });
   </script>
 </body>
 </html>
