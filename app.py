@@ -132,9 +132,6 @@ def whatsapp_webhook():
         link = f"{dominio}/votar?token={token}"
         print(f"🔗 Enlace generado: {link}")
 
-        # 🟢 IMPORTANTE: marcar sesión como autorizada para /votar
-        session['autenticado_para'] = numero_completo
-
         mensaje = (
             "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
             "Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
@@ -176,7 +173,6 @@ def whatsapp_webhook():
 
 
 
-
 # ---------------------------
 # Página principal
 # ---------------------------
@@ -199,25 +195,16 @@ def generar_link():
 
         numero_completo = pais + numero
 
-        # Verificar si ya votó
         if Voto.query.filter_by(numero=numero_completo).first():
             return render_template("voto_ya_registrado.html")
 
-        # Registrar temporalmente si no existe
         if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
             db.session.add(NumeroTemporal(numero=numero_completo))
             db.session.commit()
 
-        # 🛡️ Marcar sesión como autenticada para acceso seguro a /votar
-        session['autenticado_para'] = numero_completo
-
-        # Redirigir al contacto de WhatsApp oficial
-        return redirect(
-            "https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia."
-        )
+        return redirect("https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia.")
 
     return render_template("generar_link.html", paises=PAISES_CODIGOS)
-
 
 
 # ---------------------------
@@ -245,11 +232,6 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
-    # ❌ Protección adicional: verificar que venga de WhatsApp o del generador
-    if session.get("autenticado_para") != numero:
-        return "Acceso denegado. Para participar en la votación debes iniciar el proceso accediendo desde el enlace oficial: https://bit.ly/primariaBK"
-
-
     # Verificar que el número esté en NumeroTemporal (aún válido)
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
@@ -262,8 +244,8 @@ def votar():
     # Guardar el número del token validado en sesión para comparación posterior segura
     session['numero_token'] = numero
 
+    # Renderizar formulario y enviar el token también como campo oculto
     return render_template("votar.html", numero=numero, token=token)
-
 
 
 
