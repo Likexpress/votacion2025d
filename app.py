@@ -247,11 +247,7 @@ def votar():
 
     # ❌ Protección adicional: verificar que venga de WhatsApp o del generador
     if session.get("autenticado_para") != numero:
-
-        return (
-        "Acceso denegado. Para participar en la votación, debes iniciar el proceso "
-        "accediendo desde el enlace oficial en la página web."
-    )
+        return "Acceso denegado. Para participar en la votación debes iniciar el proceso accediendo desde el enlace oficial: https://bit.ly/primariaBK"
 
 
     # Verificar que el número esté en NumeroTemporal (aún válido)
