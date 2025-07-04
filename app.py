@@ -13,7 +13,7 @@ from flask import render_template
 from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFProtect
 from flask import Flask, request, render_template, redirect, jsonify, session
-
+from datetime import datetime, timedelta
 
 
 
@@ -73,8 +73,13 @@ class NumeroTemporal(db.Model):
 with app.app_context():
     db.create_all()
 
+# ---------------------------
+# Whatsapp
+# ---------------------------
+
+
 @app.route('/whatsapp', methods=['POST'])
-@csrf.exempt  # Excluye este endpoint de la protección CSRF
+@csrf.exempt
 def whatsapp_webhook():
     try:
         data = request.get_json()
@@ -93,54 +98,65 @@ def whatsapp_webhook():
         texto = messages[0]['text']['body'].strip().lower()
         numero_completo = "+" + numero
 
-        if "votar" in texto:
-            # Verificar si ya está registrado en NumeroTemporal
-            existente = NumeroTemporal.query.filter_by(numero=numero_completo).first()
-            if not existente:
-                nuevo = NumeroTemporal(numero=numero_completo)
-                db.session.add(nuevo)
-                db.session.commit()
+        # 🔒 Exigir mensaje exacto (filtro antispam)
+        if texto != "votar":
+            print(f"❌ Mensaje ignorado de {numero_completo}: '{texto}'")
+            return "ok", 200
 
-            # Generar el enlace de votación
-            dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
-            token_data = {
-                "numero": numero_completo,
-                "dominio": dominio
+        # ⏱️ Limitar a un intento por hora
+        hace_una_hora = datetime.utcnow() - timedelta(hours=1)
+        existente = NumeroTemporal.query.filter(
+            NumeroTemporal.numero == numero_completo,
+            NumeroTemporal.fecha > hace_una_hora
+        ).first()
+
+        if not existente:
+            nuevo = NumeroTemporal(numero=numero_completo)
+            db.session.add(nuevo)
+            db.session.commit()
+        else:
+            print(f"⚠️ Reintento de número ya registrado recientemente: {numero_completo}")
+
+        # 🌐 Generar el link cifrado
+        dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
+        token_data = {
+            "numero": numero_completo,
+            "dominio": dominio
+        }
+        token = serializer.dumps(token_data)
+        link = f"{dominio}/votar?token={token}"
+
+        print(f"🔗 Enlace generado: {link}")
+
+        mensaje = (
+            "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
+            "Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
+            f"Aquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}\n\n"
+            "Este enlace es personal e intransferible. Solo se permite un voto por persona.\n\n"
+            "Gracias por ser parte del cambio que Bolivia necesita."
+        )
+
+        url = "https://waba-v2.360dialog.io/messages"
+        headers = {
+            "Content-Type": "application/json",
+            "D360-API-KEY": os.environ.get("WABA_TOKEN")
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": numero_completo,
+            "type": "text",
+            "text": {
+                "preview_url": False,
+                "body": mensaje
             }
-            token = serializer.dumps(token_data)
-            link = f"{dominio}/votar?token={token}"
+        }
 
-            print(f"🔗 Enlace generado: {link}")
-
-            mensaje = (
-                "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
-                "Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
-                f"Aquí tienes tu enlace único para votar (válido por 10 minutos):\n{link}\n\n"
-                "Este enlace es personal e intransferible. Solo se permite un voto por persona.\n\n"
-                "Gracias por ser parte del cambio que Bolivia necesita."
-            )
-
-            url = "https://waba-v2.360dialog.io/messages"
-            headers = {
-                "Content-Type": "application/json",
-                "D360-API-KEY": os.environ.get("WABA_TOKEN")
-            }
-            payload = {
-                "messaging_product": "whatsapp",
-                "recipient_type": "individual",
-                "to": numero_completo,
-                "type": "text",
-                "text": {
-                    "preview_url": False,
-                    "body": mensaje
-                }
-            }
-
-            respuesta = requests.post(url, headers=headers, json=payload)
-            if respuesta.status_code == 200:
-                print("✅ Enlace enviado correctamente.")
-            else:
-                print(f"❌ Error al enviar mensaje WhatsApp: {respuesta.status_code} - {respuesta.text}")
+        respuesta = requests.post(url, headers=headers, json=payload)
+        if respuesta.status_code == 200:
+            print("✅ Enlace enviado correctamente.")
+        else:
+            print(f"❌ Error al enviar mensaje WhatsApp: {respuesta.status_code} - {respuesta.text}")
 
     except Exception as e:
         print("❌ Error procesando webhook:", str(e))
