@@ -247,7 +247,12 @@ def votar():
 
     # ❌ Protección adicional: verificar que venga de WhatsApp o del generador
     if session.get("autenticado_para") != numero:
-        return "Acceso no autorizado. El enlace debe ser solicitado desde WhatsApp o el sitio oficial."
+
+        return (
+        "Acceso denegado. Para participar en la votación, debes iniciar el proceso "
+        "accediendo desde el enlace oficial en la página web."
+    )
+
 
     # Verificar que el número esté en NumeroTemporal (aún válido)
     if not NumeroTemporal.query.filter_by(numero=numero).first():
