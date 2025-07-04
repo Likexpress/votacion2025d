@@ -132,6 +132,9 @@ def whatsapp_webhook():
         link = f"{dominio}/votar?token={token}"
         print(f"🔗 Enlace generado: {link}")
 
+        # 🟢 IMPORTANTE: marcar sesión como autorizada para /votar
+        session['autenticado_para'] = numero_completo
+
         mensaje = (
             "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
             "Participa en las *Primarias Bolivia 2025* y elige de manera libre y responsable.\n\n"
@@ -170,6 +173,7 @@ def whatsapp_webhook():
         print("❌ Error procesando webhook:", str(e))
 
     return "ok", 200
+
 
 
 
@@ -232,6 +236,10 @@ def votar():
     except BadSignature:
         return "Enlace inválido o alterado."
 
+    # ❌ Protección adicional: verificar que venga de WhatsApp o del generador
+    if session.get("autenticado_para") != numero:
+        return "Acceso no autorizado. El enlace debe ser solicitado desde WhatsApp o el sitio oficial."
+
     # Verificar que el número esté en NumeroTemporal (aún válido)
     if not NumeroTemporal.query.filter_by(numero=numero).first():
         enviar_mensaje_whatsapp(numero, "Detectamos que intentó ingresar datos falsos. Por favor, use su número real o será bloqueado.")
@@ -244,8 +252,8 @@ def votar():
     # Guardar el número del token validado en sesión para comparación posterior segura
     session['numero_token'] = numero
 
-    # Renderizar formulario y enviar el token también como campo oculto
     return render_template("votar.html", numero=numero, token=token)
+
 
 
 
