@@ -23,11 +23,8 @@
     <div class="card p-4">
       <form method="post" action="/enviar_voto" class="needs-validation" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
         <input type="hidden" name="latitud" id="latitud">
         <input type="hidden" name="longitud" id="longitud">
-        
-
 
         <!-- Género -->
         <div class="mb-3">
@@ -94,7 +91,7 @@
 
         <!-- Pregunta 1 -->
         <div class="mb-3">
-          <label class="form-label">¿Consideras que la oposición democrática debería unirse detrás de un solo candidato presidencial?</label>
+          <label class="form-label">¿Si Jaime Dunn fuese habilitado como candidato, votarías por él?</label>
           <select name="pregunta1" class="form-select" required>
             <option value="">Selecciona una opción</option>
             <option value="Sí">Sí</option>
@@ -102,20 +99,9 @@
           </select>
         </div>
 
-        <!-- Candidato -->
-        <div class="mb-3">
-          <label class="form-label">Candidatos propuestos</label>
-          <select name="candidato" class="form-select" required>
-            <option value="">Selecciona un candidato</option>
-            {% for candidato in ['Andronico Rodriguez', 'Eduardo del Castillo', 'Eva Copa', 'Jaime Dunn', 'Jhonny Fernández', 'Jorge Tuto Quiroga', 'Manfred Reyes Villa', 'Samuel Doria Medina'] %}
-              <option value="{{ candidato }}">{{ candidato }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
         <!-- Pregunta 2 -->
         <div class="mb-3">
-          <label class="form-label">¿Estás de acuerdo con apoyar al candidato que obtenga la mayor votación en las primarias ciudadanas?</label>
+          <label class="form-label">¿Si Tuto, Manfred o Samuel fueran candidatos únicos, votarías por alguno de ellos?</label>
           <select name="pregunta2" class="form-select" required>
             <option value="">Selecciona una opción</option>
             <option value="Sí">Sí</option>
@@ -123,9 +109,26 @@
           </select>
         </div>
 
+        <!-- Candidato (penúltimo) -->
+        <div class="mb-3">
+          <label class="form-label">Si las elecciones fueran este domingo, ¿por cuál de los siguientes candidatos votarías?</label>
+          <select name="candidato" class="form-select" required>
+            <option value="">Selecciona un candidato</option>
+            <option value="Jorge Tuto Quiroga">Jorge Tuto Quiroga</option>
+            <option value="Manfred Reyes Villa">Manfred Reyes Villa</option>
+            <option value="Rodrigo Paz Pereira">Rodrigo Paz Pereira</option>
+            <option value="Samuel Doria Medina">Samuel Doria Medina</option>
+            <option value="Andronico Rodríguez">Andronico Rodríguez</option>
+            <option value="Eduardo del Castillo">Eduardo del Castillo</option>
+            <option value="Eva Copa">Eva Copa</option>
+            <option value="Jhonny Fernández">Jhonny Fernández</option>
+            <option value="Ninguno">Ninguno</option>
+          </select>
+        </div>
+
         <!-- Pregunta 3 -->
         <div class="mb-3">
-          <label class="form-label">¿Estás dispuesto(a) a colaborar en el control del voto para prevenir posibles fraudes electorales?</label>
+          <label class="form-label">¿Estás dispuesto(a) a colaborar en el control del voto para prevenir posibles fraudes electorales con el proyecto CUIDEMOS EL VOTO?</label>
           <select id="pregunta3" name="pregunta3" class="form-select" required onchange="mostrarCampoCI(this)">
             <option value="">Selecciona una opción</option>
             <option value="Sí">Sí</option>
