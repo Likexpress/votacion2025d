@@ -77,7 +77,6 @@ with app.app_context():
 # Whatsapp
 # ---------------------------
 
-
 @app.route('/whatsapp', methods=['POST'])
 @csrf.exempt
 def whatsapp_webhook():
@@ -95,12 +94,15 @@ def whatsapp_webhook():
             return "ok", 200
 
         numero = messages[0]['from']  # Ej: 591XXXXXXXX
-        texto = messages[0]['text']['body'].strip().lower()
+        texto = messages[0].get('text', {}).get('body', '').strip().lower()
         numero_completo = "+" + numero
 
-        # 🔒 Exigir mensaje exacto (filtro antispam)
-        if texto != "votar":
-            print(f"❌ Mensaje ignorado de {numero_completo}: '{texto}'")
+        # 🔍 Debug extra
+        print(f"📨 Mensaje de: {numero_completo} → '{texto}'")
+
+        # 🔒 Filtro más flexible
+        if "votar" not in texto:
+            print(f"❌ Mensaje ignorado (no contiene 'votar')")
             return "ok", 200
 
         # ⏱️ Limitar a un intento por hora
@@ -115,17 +117,19 @@ def whatsapp_webhook():
             db.session.add(nuevo)
             db.session.commit()
         else:
-            print(f"⚠️ Reintento de número ya registrado recientemente: {numero_completo}")
+            print(f"⚠️ Número ya tiene registro reciente: {numero_completo}")
 
-        # 🌐 Generar el link cifrado
-        dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/'))
+        # 🌐 Dominio
+        dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/')).rstrip('/')
+        print("🌍 Dominio para enlace:", dominio)
+
+        # 🔐 Token y link
         token_data = {
             "numero": numero_completo,
             "dominio": dominio
         }
         token = serializer.dumps(token_data)
         link = f"{dominio}/votar?token={token}"
-
         print(f"🔗 Enlace generado: {link}")
 
         mensaje = (
@@ -136,6 +140,7 @@ def whatsapp_webhook():
             "Gracias por ser parte del cambio que Bolivia necesita."
         )
 
+        # 📤 Enviar mensaje vía WhatsApp
         url = "https://waba-v2.360dialog.io/messages"
         headers = {
             "Content-Type": "application/json",
@@ -152,6 +157,9 @@ def whatsapp_webhook():
             }
         }
 
+        print("📦 Payload enviado:")
+        print(json.dumps(payload, indent=2))
+
         respuesta = requests.post(url, headers=headers, json=payload)
         if respuesta.status_code == 200:
             print("✅ Enlace enviado correctamente.")
@@ -162,6 +170,7 @@ def whatsapp_webhook():
         print("❌ Error procesando webhook:", str(e))
 
     return "ok", 200
+
 
 
 # ---------------------------
