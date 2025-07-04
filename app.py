@@ -199,16 +199,25 @@ def generar_link():
 
         numero_completo = pais + numero
 
+        # Verificar si ya votó
         if Voto.query.filter_by(numero=numero_completo).first():
             return render_template("voto_ya_registrado.html")
 
+        # Registrar temporalmente si no existe
         if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
             db.session.add(NumeroTemporal(numero=numero_completo))
             db.session.commit()
 
-        return redirect("https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia.")
+        # 🛡️ Marcar sesión como autenticada para acceso seguro a /votar
+        session['autenticado_para'] = numero_completo
+
+        # Redirigir al contacto de WhatsApp oficial
+        return redirect(
+            "https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia."
+        )
 
     return render_template("generar_link.html", paises=PAISES_CODIGOS)
+
 
 
 # ---------------------------
