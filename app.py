@@ -301,7 +301,7 @@ def votar():
         return "Acceso no válido."
 
     try:
-        data = serializer.loads(token, max_age=600)
+        data = serializer.loads(token, max_age = 86400000)
         numero = data.get("numero")
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
