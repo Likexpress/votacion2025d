@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 
 
 # ---------------------------
-# Configuración inicial
+# Configuración inicial Hasta aqu sirve 1
 # ---------------------------
 load_dotenv()
 
@@ -97,39 +97,51 @@ def whatsapp_webhook():
         texto = messages[0].get('text', {}).get('body', '').strip().lower()
         numero_completo = "+" + numero
 
-        # 🔍 Debug extra
-        print(f"📨 Mensaje de: {numero_completo} → '{texto}'")
+        print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
-        # 🔒 Filtro más flexible
+        # 🔒 Solo responder si el texto contiene "votar"
         if "votar" not in texto:
             print(f"❌ Mensaje ignorado (no contiene 'votar')")
             return "ok", 200
 
-        # ⏱️ Limitar a un intento por hora
-        hace_una_hora = datetime.utcnow() - timedelta(hours=1)
-        existente = NumeroTemporal.query.filter(
-            NumeroTemporal.numero == numero_completo,
-            NumeroTemporal.fecha > hace_una_hora
-        ).first()
+        # ✅ Validar que el número haya sido registrado desde /generar_link
+        autorizado = NumeroTemporal.query.filter_by(numero=numero_completo).first()
+        if not autorizado:
+            print(f"❌ Número no autorizado: {numero_completo}")
 
-        if not existente:
-            nuevo = NumeroTemporal(numero=numero_completo)
-            db.session.add(nuevo)
-            db.session.commit()
-        else:
-            print(f"⚠️ Número ya tiene registro reciente: {numero_completo}")
+            mensaje_bloqueo = (
+                "⚠️ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial:\n"
+                "👉 https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net/generar_link"
+            )
 
-        # 🌐 Dominio
+            respuesta = requests.post(
+                "https://waba-v2.360dialog.io/messages",
+                headers={
+                    "Content-Type": "application/json",
+                    "D360-API-KEY": os.environ.get("WABA_TOKEN")
+                },
+                json={
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": numero_completo,
+                    "type": "text",
+                    "text": {
+                        "preview_url": False,
+                        "body": mensaje_bloqueo
+                    }
+                }
+            )
+            return "ok", 200
+
+        # 🌐 Generar token y enlace de votación
         dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/')).rstrip('/')
-        print("🌍 Dominio para enlace:", dominio)
-
-        # 🔐 Token y link
         token_data = {
             "numero": numero_completo,
             "dominio": dominio
         }
         token = serializer.dumps(token_data)
         link = f"{dominio}/votar?token={token}"
+
         print(f"🔗 Enlace generado: {link}")
 
         mensaje = (
@@ -140,8 +152,7 @@ def whatsapp_webhook():
             "Gracias por ser parte del cambio que Bolivia necesita."
         )
 
-        # 📤 Enviar mensaje vía WhatsApp
-        url = "https://waba-v2.360dialog.io/messages"
+        # 📤 Enviar el mensaje con el enlace
         headers = {
             "Content-Type": "application/json",
             "D360-API-KEY": os.environ.get("WABA_TOKEN")
@@ -157,10 +168,11 @@ def whatsapp_webhook():
             }
         }
 
-        print("📦 Payload enviado:")
+        print("📦 Payload a enviar:")
         print(json.dumps(payload, indent=2))
 
-        respuesta = requests.post(url, headers=headers, json=payload)
+        respuesta = requests.post("https://waba-v2.360dialog.io/messages", headers=headers, json=payload)
+
         if respuesta.status_code == 200:
             print("✅ Enlace enviado correctamente.")
         else:
@@ -170,6 +182,7 @@ def whatsapp_webhook():
         print("❌ Error procesando webhook:", str(e))
 
     return "ok", 200
+
 
 
 
