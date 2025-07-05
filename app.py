@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 
 
 # ---------------------------
-# Configuración inicial Hasta aqu sirve 1
+# Configuración inicial Hasta aqu sirve 12
 # ---------------------------
 load_dotenv()
 
@@ -99,22 +99,47 @@ def whatsapp_webhook():
 
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
-        # 🔒 Solo responder si el texto contiene "votar"
         if "votar" not in texto:
             print(f"❌ Mensaje ignorado (no contiene 'votar')")
             return "ok", 200
 
-        # ✅ Validar que el número haya sido registrado desde /generar_link
+        # Verificar si el número está bloqueado
+        bloqueo = BloqueoWhatsapp.query.filter_by(numero=numero_completo).first()
+        if bloqueo and bloqueo.bloqueado:
+            print(f"🚫 Número bloqueado permanentemente: {numero_completo}")
+            return "ok", 200
+
+        # Verificar si el número fue autorizado desde /generar_link
         autorizado = NumeroTemporal.query.filter_by(numero=numero_completo).first()
         if not autorizado:
             print(f"❌ Número no autorizado: {numero_completo}")
 
-            mensaje_bloqueo = (
-                "¡ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial¡:\n"
-                "- https://bit.ly/primariaBK"
-            )
+            if not bloqueo:
+                bloqueo = BloqueoWhatsapp(numero=numero_completo, intentos=1)
+                db.session.add(bloqueo)
+                db.session.commit()
+                intentos = 1
+            else:
+                bloqueo.intentos += 1
+                if bloqueo.intentos >= 3:
+                    bloqueo.bloqueado = True
+                    db.session.commit()
+                    mensaje = (
+                        "Has superado el número de intentos permitidos. "
+                        "Tus mensajes ya no serán respondidos. Gracias por tu comprensión."
+                    )
+                else:
+                    db.session.commit()
+                    mensaje = (
+                        "Para recibir tu enlace de votación, primero debes registrarte en el portal oficial:\n\n"
+                        "https://bit.ly/primariaBK\n\n"
+                        "Asegúrate de ingresar correctamente tu número de WhatsApp durante el registro, "
+                        "ya que solo ese número podrá recibir el enlace de votación.\n\n"
+                        f"Intento {bloqueo.intentos} de 3."
+                    )
 
-            respuesta = requests.post(
+            # Enviar advertencia
+            requests.post(
                 "https://waba-v2.360dialog.io/messages",
                 headers={
                     "Content-Type": "application/json",
@@ -127,13 +152,13 @@ def whatsapp_webhook():
                     "type": "text",
                     "text": {
                         "preview_url": False,
-                        "body": mensaje_bloqueo
+                        "body": mensaje
                     }
                 }
             )
             return "ok", 200
 
-        # 🌐 Generar token y enlace de votación
+        # Si autorizado → generar token
         dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/')).rstrip('/')
         token_data = {
             "numero": numero_completo,
@@ -152,7 +177,6 @@ def whatsapp_webhook():
             "Gracias por ser parte del cambio que Bolivia necesita."
         )
 
-        # 📤 Enviar el mensaje con el enlace
         headers = {
             "Content-Type": "application/json",
             "D360-API-KEY": os.environ.get("WABA_TOKEN")
@@ -184,6 +208,17 @@ def whatsapp_webhook():
     return "ok", 200
 
 
+
+# ---------------------------
+# Bloqueo WHatsapp
+# ---------------------------
+
+class BloqueoWhatsapp(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    intentos = db.Column(db.Integer, default=0)
+    bloqueado = db.Column(db.Boolean, default=False)
+    fecha_ultimo_intento = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ---------------------------
