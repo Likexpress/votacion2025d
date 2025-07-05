@@ -338,6 +338,14 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
+    # Validar REFERER (dominio de origen)
+    referer = request.headers.get("Referer", "")
+    dominio_permitido = os.environ.get("AZURE_DOMAIN", "https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net")
+    
+    if dominio_permitido not in referer:
+        print(f"❌ Referer inválido: {referer}")
+        return "Acceso no autorizado (referer inválido).", 403
+
     # Verifica que el número de sesión esté presente
     numero = session.get('numero_token')
     if not numero:
@@ -375,7 +383,7 @@ def enviar_voto():
     if ci:
         try:
             ci = int(ci)
-        except:
+        except ValueError:
             return "CI inválido.", 400
 
     # Verificar si ya votó
@@ -404,15 +412,12 @@ def enviar_voto():
         ci=ci
     )
 
-    # Guardar en la base de datos y limpiar número temporal
     db.session.add(nuevo_voto)
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
 
-    # Limpiar sesión
     session.pop('numero_token', None)
 
-    # Mostrar pantalla de éxito
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -425,6 +430,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
