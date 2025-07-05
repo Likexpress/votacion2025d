@@ -111,7 +111,7 @@ def whatsapp_webhook():
 
             mensaje_bloqueo = (
                 "¡ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial¡:\n"
-                "- https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net/generar_link"
+                "- https://bit.ly/redesun"
             )
 
             respuesta = requests.post(
