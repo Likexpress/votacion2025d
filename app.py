@@ -100,45 +100,48 @@ def whatsapp_webhook():
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
         if "votar" not in texto:
-            print(f"❌ Mensaje ignorado (no contiene 'votar')")
+            print("❌ Mensaje ignorado (no contiene 'votar')")
             return "ok", 200
 
-        # Verificar si el número está bloqueado
-        bloqueo = BloqueoWhatsapp.query.filter_by(numero=numero_completo).first()
+        # ⚠️ BLOQUEO: Consultar tabla bloqueo_whatsapp
+        bloqueo = db.session.execute(
+            db.select(BloqueoWhatsapp).where(BloqueoWhatsapp.numero == numero_completo)
+        ).scalar_one_or_none()
+
         if bloqueo and bloqueo.bloqueado:
-            print(f"🚫 Número bloqueado permanentemente: {numero_completo}")
+            print(f"🚫 Número bloqueado: {numero_completo}")
             return "ok", 200
 
-        # Verificar si el número fue autorizado desde /generar_link
+        # ✅ Verificar si está autorizado desde /generar_link
         autorizado = NumeroTemporal.query.filter_by(numero=numero_completo).first()
         if not autorizado:
             print(f"❌ Número no autorizado: {numero_completo}")
 
+            # Manejo de advertencias
             if not bloqueo:
                 bloqueo = BloqueoWhatsapp(numero=numero_completo, intentos=1)
                 db.session.add(bloqueo)
-                db.session.commit()
-                intentos = 1
             else:
                 bloqueo.intentos += 1
-                if bloqueo.intentos >= 3:
+                if bloqueo.intentos >= 4:
                     bloqueo.bloqueado = True
-                    db.session.commit()
-                    mensaje = (
-                        "Has superado el número de intentos permitidos. "
-                        "Tus mensajes ya no serán respondidos. Gracias por tu comprensión."
-                    )
-                else:
-                    db.session.commit()
-                    mensaje = (
-                        "Para recibir tu enlace de votación, primero debes registrarte en el portal oficial:\n\n"
-                        "https://bit.ly/primariaBK\n\n"
-                        "Asegúrate de ingresar correctamente tu número de WhatsApp durante el registro, "
-                        "ya que solo ese número podrá recibir el enlace de votación.\n\n"
-                        f"Intento {bloqueo.intentos} de 3."
-                    )
 
-            # Enviar advertencia
+            db.session.commit()
+
+            if bloqueo.intentos < 4:
+                advertencia = (
+                    "⚠️ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial:\n\n"
+                    "👉 https://bit.ly/primariaBK\n\n"
+                    "Asegúrate de ingresar correctamente tu número de WhatsApp durante el registro, "
+                    "ya que solo ese número podrá recibir el enlace.\n\n"
+                    f"Advertencia {bloqueo.intentos}/3"
+                )
+            else:
+                advertencia = (
+                    "🚫 Has excedido el número de intentos permitidos. "
+                    "Tus mensajes ya no serán respondidos por este sistema."
+                )
+
             requests.post(
                 "https://waba-v2.360dialog.io/messages",
                 headers={
@@ -152,13 +155,13 @@ def whatsapp_webhook():
                     "type": "text",
                     "text": {
                         "preview_url": False,
-                        "body": mensaje
+                        "body": advertencia
                     }
                 }
             )
             return "ok", 200
 
-        # Si autorizado → generar token
+        # ✅ Número autorizado: Generar y enviar enlace de votación
         dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/')).rstrip('/')
         token_data = {
             "numero": numero_completo,
@@ -177,10 +180,6 @@ def whatsapp_webhook():
             "Gracias por ser parte del cambio que Bolivia necesita."
         )
 
-        headers = {
-            "Content-Type": "application/json",
-            "D360-API-KEY": os.environ.get("WABA_TOKEN")
-        }
         payload = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
@@ -192,11 +191,12 @@ def whatsapp_webhook():
             }
         }
 
-        print("📦 Payload a enviar:")
-        print(json.dumps(payload, indent=2))
+        headers = {
+            "Content-Type": "application/json",
+            "D360-API-KEY": os.environ.get("WABA_TOKEN")
+        }
 
         respuesta = requests.post("https://waba-v2.360dialog.io/messages", headers=headers, json=payload)
-
         if respuesta.status_code == 200:
             print("✅ Enlace enviado correctamente.")
         else:
@@ -209,16 +209,18 @@ def whatsapp_webhook():
 
 
 
+
 # ---------------------------
 # Bloqueo WHatsapp
 # ---------------------------
 
 class BloqueoWhatsapp(db.Model):
+    __tablename__ = "bloqueo_whatsapp"
     id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    numero = db.Column(db.String(50), unique=True, nullable=False)
     intentos = db.Column(db.Integer, default=0)
     bloqueado = db.Column(db.Boolean, default=False)
-    fecha_ultimo_intento = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 
 # ---------------------------
