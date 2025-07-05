@@ -67,10 +67,15 @@ class Voto(db.Model):
     pregunta3 = db.Column(db.String(10), nullable=False)
     ci = db.Column(db.BigInteger, nullable=True)
 
+# ---------------------------
+# NumeroTemporal
+# ---------------------------
 class NumeroTemporal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     numero = db.Column(db.String(50), unique=True, nullable=False)
+    token = db.Column(db.Text, nullable=True)  # <--- Este campo debe existir
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 with app.app_context():
     db.create_all()
@@ -420,19 +425,6 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
