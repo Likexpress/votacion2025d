@@ -110,8 +110,8 @@ def whatsapp_webhook():
             print(f"❌ Número no autorizado: {numero_completo}")
 
             mensaje_bloqueo = (
-                "⚠️ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial:\n"
-                "👉 https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net/generar_link"
+                "¡ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial¡:\n"
+                "- https://bit.ly/redesun"
             )
 
             respuesta = requests.post(
