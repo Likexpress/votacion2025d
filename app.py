@@ -14,11 +14,13 @@ from flask_wtf import CSRFProtect
 from flask_wtf.csrf import CSRFProtect
 from flask import Flask, request, render_template, redirect, jsonify, session
 from datetime import datetime, timedelta
+from itsdangerous import URLSafeTimedSerializer
+
 
 
 
 # ---------------------------
-# Configuración inicial Hasta aqu sirve 12
+# Configuración inicial Hasta aqu sirve 123
 # ---------------------------
 load_dotenv()
 
@@ -99,11 +101,12 @@ def whatsapp_webhook():
 
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
+        # ❌ Ignorar si no contiene "votar"
         if "votar" not in texto:
             print("❌ Mensaje ignorado (no contiene 'votar')")
             return "ok", 200
 
-        # ⚠️ BLOQUEO: Consultar tabla bloqueo_whatsapp
+        # ⚠️ Consultar si está bloqueado
         bloqueo = db.session.execute(
             db.select(BloqueoWhatsapp).where(BloqueoWhatsapp.numero == numero_completo)
         ).scalar_one_or_none()
@@ -112,7 +115,7 @@ def whatsapp_webhook():
             print(f"🚫 Número bloqueado: {numero_completo}")
             return "ok", 200
 
-        # ✅ Verificar si está autorizado desde /generar_link
+        # ✅ Verificar si está autorizado (debe existir en NumeroTemporal)
         autorizado = NumeroTemporal.query.filter_by(numero=numero_completo).first()
         if not autorizado:
             print(f"❌ Número no autorizado: {numero_completo}")
@@ -142,6 +145,7 @@ def whatsapp_webhook():
                     "Tus mensajes ya no serán respondidos por este sistema."
                 )
 
+            # Enviar advertencia solo si aún no está bloqueado
             requests.post(
                 "https://waba-v2.360dialog.io/messages",
                 headers={
@@ -161,16 +165,14 @@ def whatsapp_webhook():
             )
             return "ok", 200
 
-        # ✅ Número autorizado: Generar y enviar enlace de votación
-        dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/')).rstrip('/')
-        token_data = {
-            "numero": numero_completo,
-            "dominio": dominio
-        }
-        token = serializer.dumps(token_data)
-        link = f"{dominio}/votar?token={token}"
+        # ✅ Ya está autorizado, usar su token guardado
+        if not autorizado.token:
+            print(f"⚠️ No se encontró token almacenado para {numero_completo}")
+            return "ok", 200
 
-        print(f"🔗 Enlace generado: {link}")
+        link = f"{os.environ.get('AZURE_DOMAIN', request.host_url.rstrip('/')).rstrip('/')}/votar?token={autorizado.token}"
+
+        print(f"🔗 Enlace recuperado: {link}")
 
         mensaje = (
             "Estás por ejercer un derecho fundamental como ciudadano boliviano.\n\n"
@@ -180,6 +182,7 @@ def whatsapp_webhook():
             "Gracias por ser parte del cambio que Bolivia necesita."
         )
 
+        # Enviar mensaje con el enlace
         payload = {
             "messaging_product": "whatsapp",
             "recipient_type": "individual",
@@ -210,6 +213,7 @@ def whatsapp_webhook():
 
 
 
+
 # ---------------------------
 # Bloqueo WHatsapp
 # ---------------------------
@@ -230,6 +234,11 @@ class BloqueoWhatsapp(db.Model):
 def index():
     return redirect('/generar_link')
 
+
+# ---------------------------
+# Generar Link
+# ---------------------------
+
 @app.route('/generar_link', methods=['GET', 'POST'])
 def generar_link():
     if request.method == 'POST':
@@ -245,16 +254,35 @@ def generar_link():
 
         numero_completo = pais + numero
 
+        # Si ya votó, mostrar mensaje
         if Voto.query.filter_by(numero=numero_completo).first():
             return render_template("voto_ya_registrado.html")
 
-        if not NumeroTemporal.query.filter_by(numero=numero_completo).first():
-            db.session.add(NumeroTemporal(numero=numero_completo))
-            db.session.commit()
+        # Obtener dominio
+        dominio = os.environ.get("AZURE_DOMAIN", request.host_url.rstrip('/')).rstrip('/')
 
+        # Generar token único
+        token_data = {
+            "numero": numero_completo,
+            "dominio": dominio
+        }
+        token = serializer.dumps(token_data)
+
+        # Verificar si ya está registrado
+        temporal = NumeroTemporal.query.filter_by(numero=numero_completo).first()
+        if not temporal:
+            temporal = NumeroTemporal(numero=numero_completo, token=token)
+            db.session.add(temporal)
+        else:
+            temporal.token = token  # Actualizar token si ya existía
+
+        db.session.commit()
+
+        # Redireccionar al WhatsApp con el mensaje prellenado
         return redirect("https://wa.me/59172902813?text=Hola,%20deseo%20participar%20en%20este%20proceso%20democrático%20porque%20creo%20en%20el%20cambio.%20Quiero%20ejercer%20mi%20derecho%20a%20votar%20de%20manera%20libre%20y%20responsable%20por%20el%20futuro%20de%20Bolivia.")
 
     return render_template("generar_link.html", paises=PAISES_CODIGOS)
+
 
 
 # ---------------------------
@@ -296,17 +324,6 @@ def votar():
 
     # Renderizar formulario y enviar el token también como campo oculto
     return render_template("votar.html", numero=numero, token=token)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
