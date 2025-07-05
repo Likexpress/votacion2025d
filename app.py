@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 
 
 # ---------------------------
-# Configuración inicial Hasta aqu sirve 12
+# Configuración inicial Hasta aqu sirve 1
 # ---------------------------
 load_dotenv()
 
@@ -111,7 +111,7 @@ def whatsapp_webhook():
 
             mensaje_bloqueo = (
                 "¡ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial¡:\n"
-                "- https://bit.ly/redesun"
+                "- https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net/generar_link"
             )
 
             respuesta = requests.post(
