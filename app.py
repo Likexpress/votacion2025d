@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 
 
 # ---------------------------
-# Configuración inicial Hasta aqu sirve 1
+# Configuración inicial Hasta aqu sirve 12
 # ---------------------------
 load_dotenv()
 
