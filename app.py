@@ -375,7 +375,8 @@ def enviar_voto():
     # Validar campos requeridos
     if not all([genero, pais, departamento, provincia, municipio, recinto,
                 dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
-        return "Faltan campos obligatorios.", 400
+        return render_template("faltan_campos.html")
+
 
     if pregunta3 == "Sí" and not ci:
         return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
