@@ -21,10 +21,15 @@
     .mensaje-wrapper h3 {
       color: #dc3545;
     }
+    .logo-img {
+      max-width: 150px;
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   <div class="mensaje-wrapper">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
     <h3>Voto ya registrado</h3>
     <p class="mt-3 fs-5">
       Nuestro sistema ha detectado que este número ya ha emitido su voto.
