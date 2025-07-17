@@ -435,23 +435,41 @@ def enviar_voto():
 
 
 # ---------------------------
-# API local desde CSV
+# API local desde CSV con validación de origen (Referer)
 # ---------------------------
 @app.route('/api/recintos')
 def api_recintos():
-    archivo = os.path.join(os.path.dirname(__file__), "RecintosParaPrimaria.csv")
+    # Validación del dominio de origen (protección básica)
+    referer = request.headers.get("Referer", "")
+    dominio_esperado = os.environ.get("AZURE_DOMAIN", "https://primariasbunker.org")
+    
+    if dominio_esperado not in referer:
+        print(f"❌ Acceso denegado a /api/recintos desde Referer: {referer}")
+        return "Acceso no autorizado", 403
+
+    # Ruta protegida al archivo
+    archivo = os.path.join(os.path.dirname(__file__), "privado", "RecintosParaPrimaria.csv")
     datos = []
-    with open(archivo, encoding='utf-8') as f:
-        lector = csv.DictReader(f)
-        for fila in lector:
-            datos.append({
-                "nombre_pais": fila["nombre_pais"],
-                "nombre_departamento": fila["nombre_departamento"],
-                "nombre_provincia": fila["nombre_provincia"],
-                "nombre_municipio": fila["nombre_municipio"],
-                "nombre_recinto": fila["nombre_recinto"]
-            })
-    return jsonify(datos)
+    
+    try:
+        with open(archivo, encoding='utf-8') as f:
+            lector = csv.DictReader(f)
+            for fila in lector:
+                datos.append({
+                    "nombre_pais": fila["nombre_pais"],
+                    "nombre_departamento": fila["nombre_departamento"],
+                    "nombre_provincia": fila["nombre_provincia"],
+                    "nombre_municipio": fila["nombre_municipio"],
+                    "nombre_recinto": fila["nombre_recinto"]
+                })
+        return jsonify(datos)
+    except FileNotFoundError:
+        print("❌ Archivo RecintosParaPrimaria.csv no encontrado.")
+        return "Archivo de recintos no disponible.", 500
+    except Exception as e:
+        print(f"❌ Error al leer CSV: {str(e)}")
+        return "Error procesando los datos.", 500
+
 
 # ---------------------------
 # Página de preguntas frecuentes
