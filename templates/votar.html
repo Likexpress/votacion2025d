@@ -9,18 +9,61 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
   <style>
-    body { background-color: #f4f6f9; }
-    .form-wrapper { max-width: 950px; margin: auto; padding: 20px; }
-    .card { border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.06); }
-    .hidden { display: none; }
+    body {
+      background-color: #f4f6f9;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .form-wrapper {
+      max-width: 950px;
+      margin: auto;
+      padding: 30px 20px;
+    }
+    .card {
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.08);
+      border-top: 8px solid #d52b1e;
+      border-bottom: 8px solid #007a33;
+      padding: 30px;
+      background-color: #fff;
+    }
+    h2 {
+      font-weight: bold;
+      color: #d52b1e;
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 20px auto;
+      max-height: 90px;
+    }
+    .btn-success {
+      background-color: #007a33;
+      border: none;
+    }
+    .btn-success:hover {
+      background-color: #005e28;
+    }
+    .form-label {
+      font-weight: 600;
+    }
+    .section-title {
+      margin-top: 30px;
+      font-size: 1.2rem;
+      color: #d52b1e;
+      border-left: 5px solid #ffcc00;
+      padding-left: 10px;
+    }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
-  <div class="form-wrapper">
-    <h2 class="text-center">Votaciones Primarias Bolivia 2025</h2>
-    <p class="text-center">Participa en las votaciones primarias y elige al candidato de oposición que nos representará en las elecciones 2025.</p>
+  <div class="form-wrapper text-center">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo">
+    <h2>Votaciones Primarias Bolivia 2025</h2>
+    <p class="text-muted">Participa en las votaciones primarias y elige al candidato de oposición que nos representará en las elecciones 2025.</p>
 
-    <div class="card p-4">
+    <div class="card text-start">
       <form method="post" action="/enviar_voto" class="needs-validation" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="latitud" id="latitud">
@@ -68,6 +111,7 @@
         </div>
 
         <!-- Ubicación -->
+        <div class="section-title">Datos de Ubicación</div>
         <div class="mb-3">
           <label class="form-label">País</label>
           <select id="pais" name="pais" class="form-select" required></select>
@@ -89,8 +133,9 @@
           <select id="recinto" name="recinto" class="form-select" required></select>
         </div>
 
-        <!-- Pregunta: Candidato -->
-        <!-- Pregunta 1 -->
+        <!-- Preguntas de intención de voto -->
+        <div class="section-title">Preferencia Electoral</div>
+
         <div class="mb-3">
           <label class="form-label">¿Por quién votarás el 17 de agosto?</label>
           <select name="candidato" class="form-select" required>
@@ -101,7 +146,6 @@
           </select>
         </div>
 
-        <!-- Pregunta 2 -->
         <div class="mb-3">
           <label class="form-label">¿Votarías por un candidato del MAS, UCS, Morena o Alianza Popular?</label>
           <select name="pregunta1" class="form-select" required>
@@ -112,7 +156,6 @@
           </select>
         </div>
 
-        <!-- Pregunta 3 -->
         <div class="mb-3">
           <label class="form-label">Si Jorge Tuto Quiroga fuera el candidato único de la oposición, ¿votarías por él?</label>
           <select name="pregunta2" class="form-select" required>
@@ -123,7 +166,6 @@
           </select>
         </div>
 
-        <!-- Pregunta 4 -->
         <div class="mb-3">
           <label class="form-label">Si Manfred Reyes Villa fuera el candidato único de la oposición, ¿votarías por él?</label>
           <select name="pregunta4" class="form-select" required>
@@ -134,7 +176,6 @@
           </select>
         </div>
 
-        <!-- Pregunta 5 -->
         <div class="mb-3">
           <label class="form-label">Si Samuel Doria Medina fuera el candidato único de la oposición, ¿votarías por él?</label>
           <select name="pregunta5" class="form-select" required>
@@ -145,23 +186,22 @@
           </select>
         </div>
 
-
-        <!-- Pregunta 3 -->
+        <div class="section-title">Compromiso con la Democracia</div>
         <div class="mb-3">
-          <label class="form-label">¿Estás dispuesto(a) a colaborar en el control del voto para prevenir posibles fraudes electorales con el proyecto CUIDEMOS EL VOTO?</label>
+          <label class="form-label">¿Estás dispuesto(a) a colaborar en el control del voto con el proyecto <strong>CUIDEMOS EL VOTO</strong>?</label>
           <select id="pregunta3" name="pregunta3" class="form-select" required onchange="mostrarCampoCI(this)">
             <option value="">Selecciona una opción</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
           </select>
         </div>
-
         <!-- Campo CI (condicional) -->
         <div class="mb-3 hidden" id="campo_ci">
           <label for="ci" class="form-label">Carnet de Identidad</label>
           <input type="number" id="ci" name="ci" class="form-control">
         </div>
 
+        <!-- Botón de envío -->
         <div class="d-grid">
           <button type="submit" class="btn btn-success btn-lg">Enviar Voto</button>
         </div>
@@ -193,7 +233,8 @@
     function actualizarProvincias() {
       const pais = $('#pais').val();
       const departamento = $('#departamento').val();
-      const provincias = [...new Set(recintosData.filter(r => r.nombre_pais === pais && r.nombre_departamento === departamento).map(r => r.nombre_provincia))];
+      const provincias = [...new Set(recintosData.filter(r =>
+        r.nombre_pais === pais && r.nombre_departamento === departamento).map(r => r.nombre_provincia))];
       const select = $('#provincia');
       select.empty().append(new Option('Selecciona provincia', ''));
       provincias.forEach(prov => select.append(new Option(prov, prov)));
@@ -243,7 +284,6 @@
         ciInput.required = false;
       }
     }
-
     $(document).ready(() => {
       cargarDatos();
       $('#pais').select2().on('change', actualizarDepartamentos);
