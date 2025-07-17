@@ -89,52 +89,62 @@
           <select id="recinto" name="recinto" class="form-select" required></select>
         </div>
 
-        <!-- Pregunta: Candidato -->
+        <!-- Pregunta 1 -->
+        <!-- Pregunta 1 -->
         <div class="mb-3">
-          <label class="form-label">Si las elecciones fueran este domingo, ¿por cuál de los siguientes candidatos votarías?</label>
+          <label class="form-label">¿Por quién votarás el 17 de agosto?</label>
           <select name="candidato" class="form-select" required>
             <option value="">Selecciona un candidato</option>
             <option value="Jorge Tuto Quiroga">Jorge Tuto Quiroga</option>
             <option value="Manfred Reyes Villa">Manfred Reyes Villa</option>
-            <option value="Rodrigo Paz Pereira">Rodrigo Paz Pereira</option>
             <option value="Samuel Doria Medina">Samuel Doria Medina</option>
-            <option value="Andronico Rodríguez">Andronico Rodríguez</option>
-            <option value="Eduardo del Castillo">Eduardo del Castillo</option>
-            <option value="Eva Copa">Eva Copa</option>
-            <option value="Jhonny Fernández">Jhonny Fernández</option>
-            <option value="Ninguno">Ninguno</option>
-          </select>
-        </div>
-
-        <!-- Pregunta 1 -->
-        <div class="mb-3">
-          <label class="form-label">¿Si Jaime Dunn fuese habilitado como candidato, votarías por él?</label>
-          <select name="pregunta1" class="form-select" required>
-            <option value="">Selecciona una opción</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
           </select>
         </div>
 
         <!-- Pregunta 2 -->
         <div class="mb-3">
-          <label class="form-label">¿Si Tuto, Manfred o Samuel fueran candidatos únicos, votarías por alguno de ellos?</label>
-          <select name="pregunta2" class="form-select" required>
+          <label class="form-label">¿Votarías por un candidato del MAS, UCS, Morena o Alianza Popular?</label>
+          <select name="pregunta1" class="form-select" required>
             <option value="">Selecciona una opción</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
+            <option value="No sabe">No sabe</option>
           </select>
         </div>
 
         <!-- Pregunta 3 -->
         <div class="mb-3">
-          <label class="form-label">¿Estás dispuesto(a) a colaborar en el control del voto para prevenir posibles fraudes electorales con el proyecto CUIDEMOS EL VOTO?</label>
-          <select id="pregunta3" name="pregunta3" class="form-select" required onchange="mostrarCampoCI(this)">
+          <label class="form-label">Si Jorge Tuto Quiroga fuera el candidato único de la oposición, ¿votarías por él?</label>
+          <select name="pregunta2" class="form-select" required>
             <option value="">Selecciona una opción</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
+            <option value="No sabe">No sabe</option>
           </select>
         </div>
+
+        <!-- Pregunta 4 -->
+        <div class="mb-3">
+          <label class="form-label">Si Manfred Reyes Villa fuera el candidato único de la oposición, ¿votarías por él?</label>
+          <select name="pregunta4" class="form-select" required>
+            <option value="">Selecciona una opción</option>
+            <option value="Sí">Sí</option>
+            <option value="No">No</option>
+            <option value="No sabe">No sabe</option>
+          </select>
+        </div>
+
+        <!-- Pregunta 5 -->
+        <div class="mb-3">
+          <label class="form-label">Si Samuel Doria Medina fuera el candidato único de la oposición, ¿votarías por él?</label>
+          <select name="pregunta5" class="form-select" required>
+            <option value="">Selecciona una opción</option>
+            <option value="Sí">Sí</option>
+            <option value="No">No</option>
+            <option value="No sabe">No sabe</option>
+          </select>
+        </div>
+
 
         <!-- Campo CI (condicional) -->
         <div class="mb-3 hidden" id="campo_ci">
