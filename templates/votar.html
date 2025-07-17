@@ -89,7 +89,7 @@
           <select id="recinto" name="recinto" class="form-select" required></select>
         </div>
 
-        <!-- Pregunta 1 -->
+        <!-- Pregunta: Candidato -->
         <!-- Pregunta 1 -->
         <div class="mb-3">
           <label class="form-label">¿Por quién votarás el 17 de agosto?</label>
@@ -145,6 +145,16 @@
           </select>
         </div>
 
+
+        <!-- Pregunta 3 -->
+        <div class="mb-3">
+          <label class="form-label">¿Estás dispuesto(a) a colaborar en el control del voto para prevenir posibles fraudes electorales con el proyecto CUIDEMOS EL VOTO?</label>
+          <select id="pregunta3" name="pregunta3" class="form-select" required onchange="mostrarCampoCI(this)">
+            <option value="">Selecciona una opción</option>
+            <option value="Sí">Sí</option>
+            <option value="No">No</option>
+          </select>
+        </div>
 
         <!-- Campo CI (condicional) -->
         <div class="mb-3 hidden" id="campo_ci">
