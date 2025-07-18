@@ -66,6 +66,7 @@ class Voto(db.Model):
     pregunta2 = db.Column(db.String(10), nullable=False)
     pregunta3 = db.Column(db.String(10), nullable=False)
     pregunta4 = db.Column(db.String(255), nullable=True)  # ✅ NUEVO CAMPO AGREGADO AQUÍ
+    pregunta6 = db.Column(db.String(255), nullable=True)
     pregunta5 = db.Column(db.String(255), nullable=True)
     ci = db.Column(db.BigInteger, nullable=True)
 
@@ -370,6 +371,7 @@ def enviar_voto():
     pregunta3 = request.form.get('pregunta3')
     pregunta4 = request.form.get('pregunta4')
     pregunta5 = request.form.get('pregunta5')
+    pregunta6 = request.form.get('pregunta6')
     ci = request.form.get('ci') or None
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
@@ -417,6 +419,7 @@ def enviar_voto():
         pregunta3=pregunta3,
         pregunta4=pregunta4,
         pregunta5=pregunta5,
+        pregunta6=pregunta6,
         ci=ci
     )
 
