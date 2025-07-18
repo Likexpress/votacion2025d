@@ -367,6 +367,7 @@ def enviar_voto():
     candidato = request.form.get('candidato')
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
+    pregunta4 = request.form.get('pregunta4')
     ci = request.form.get('ci') or None
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
@@ -412,8 +413,10 @@ def enviar_voto():
         candidato=candidato,
         pregunta2=pregunta2,
         pregunta3=pregunta3,
+        pregunta4=pregunta4,  # ✅ nuevo campo
         ci=ci
     )
+
 
     db.session.add(nuevo_voto)
     NumeroTemporal.query.filter_by(numero=numero).delete()
