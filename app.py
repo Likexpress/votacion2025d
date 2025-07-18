@@ -66,6 +66,7 @@ class Voto(db.Model):
     pregunta2 = db.Column(db.String(10), nullable=False)
     pregunta3 = db.Column(db.String(10), nullable=False)
     pregunta4 = db.Column(db.String(255), nullable=True)  # ✅ NUEVO CAMPO AGREGADO AQUÍ
+    pregunta5 = db.Column(db.String(255), nullable=True)
     ci = db.Column(db.BigInteger, nullable=True)
 
 
