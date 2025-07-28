@@ -60,7 +60,6 @@
 <body>
   <div class="form-wrapper text-center">
     <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo del proyecto" class="img-fluid">
-
     <h2>Votaciones Primarias Bolivia 2025</h2>
     <p class="text-muted">Participa en las votaciones primarias y elige al candidato de oposición que nos representará en las elecciones 2025.</p>
 
@@ -70,7 +69,6 @@
         <input type="hidden" name="latitud" id="latitud">
         <input type="hidden" name="longitud" id="longitud">
 
-        <!-- Género -->
         <div class="mb-3">
           <label class="form-label">Género</label>
           <select name="genero" class="form-select" required>
@@ -80,7 +78,6 @@
           </select>
         </div>
 
-        <!-- Fecha de nacimiento -->
         <div class="mb-3">
           <label class="form-label">Fecha de nacimiento</label>
           <div class="row g-2">
@@ -111,7 +108,6 @@
           </div>
         </div>
 
-        <!-- Ubicación -->
         <div class="section-title">Datos de Ubicación</div>
         <div class="mb-3">
           <label class="form-label">País</label>
@@ -134,7 +130,6 @@
           <select id="recinto" name="recinto" class="form-select" required></select>
         </div>
 
-        <!-- Preguntas de intención de voto -->
         <div class="section-title">Preferencia Electoral</div>
 
         <div class="mb-3">
@@ -186,12 +181,9 @@
             <option value="No sabe">No sabe</option>
           </select>
         </div>
-        <!-- ✅ Nueva pregunta añadida -->
-        <!-- ✅ Pregunta 6 corregida -->
+
         <div class="mb-3">
-          <label class="form-label">
-            ¿El nuevo gobierno debería aplicar el programa liberal de Jaime Dunn?
-          </label>
+          <label class="form-label">¿El nuevo gobierno debería aplicar el programa liberal de Jaime Dunn?</label>
           <select name="pregunta6" class="form-select" required>
             <option value="">Selecciona una opción</option>
             <option value="Sí">Sí</option>
@@ -208,13 +200,12 @@
             <option value="No">No</option>
           </select>
         </div>
-        <!-- Campo CI (condicional) -->
+
         <div class="mb-3 hidden" id="campo_ci">
           <label for="ci" class="form-label">Carnet de Identidad</label>
           <input type="number" id="ci" name="ci" class="form-control">
         </div>
 
-        <!-- Botón de envío -->
         <div class="d-grid">
           <button type="submit" class="btn btn-success btn-lg">Enviar Voto</button>
         </div>
@@ -228,7 +219,6 @@
     async function cargarDatos() {
       const res = await fetch("/api/recintos");
       recintosData = await res.json();
-
       const paises = [...new Set(recintosData.map(r => r.nombre_pais))];
       paises.forEach(p => $('#pais').append(new Option(p, p)));
       $('#pais').val('Bolivia').trigger('change');
@@ -261,8 +251,7 @@
       const municipios = [...new Set(recintosData.filter(r =>
         r.nombre_pais === pais &&
         r.nombre_departamento === departamento &&
-        r.nombre_provincia === provincia
-      ).map(r => r.nombre_municipio))];
+        r.nombre_provincia === provincia).map(r => r.nombre_municipio))];
       const select = $('#municipio');
       select.empty().append(new Option('Selecciona municipio', ''));
       municipios.forEach(m => select.append(new Option(m, m)));
@@ -278,8 +267,7 @@
         r.nombre_pais === pais &&
         r.nombre_departamento === departamento &&
         r.nombre_provincia === provincia &&
-        r.nombre_municipio === municipio
-      ).map(r => r.nombre_recinto))];
+        r.nombre_municipio === municipio).map(r => r.nombre_recinto))];
       const select = $('#recinto');
       select.empty().append(new Option('Selecciona recinto', ''));
       recintos.forEach(r => select.append(new Option(r, r)));
@@ -297,6 +285,7 @@
         ciInput.required = false;
       }
     }
+
     $(document).ready(() => {
       cargarDatos();
       $('#pais').select2().on('change', actualizarDepartamentos);
@@ -306,7 +295,6 @@
       $('#recinto').select2();
     });
 
-    // Geolocalización al cargar
     window.onload = function () {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -324,11 +312,17 @@
       }
     };
 
-    // Evitar múltiples envíos del formulario
     document.querySelector('form').addEventListener('submit', function (e) {
       const boton = this.querySelector('button[type="submit"]');
       boton.disabled = true;
       boton.innerText = 'Enviando...';
+    });
+
+    // Limpieza de caracteres invisibles en CI
+    document.getElementById("ci").addEventListener("input", function () {
+      this.value = this.value
+        .normalize("NFKD")
+        .replace(/[^\d]/g, '');
     });
   </script>
 </body>
