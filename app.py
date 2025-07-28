@@ -500,11 +500,20 @@ def api_recintos():
 
 
 
+# Variable global para controlar si la limpieza ya fue ejecutada
+limpieza_realizada = False
+
 @app.route("/limpiar_numeros")
 def limpiar_numeros():
+    global limpieza_realizada
+
+    # Si ya fue ejecutado, denegar acceso
+    if limpieza_realizada:
+        return "❌ Esta operación ya fue ejecutada. Ruta desactivada.", 403
+
     clave_admin = request.args.get("clave")
     if clave_admin != os.environ.get("CLAVE_LIMPIEZA", "123limpiar"):
-        return "No autorizado", 403
+        return "❌ No autorizado", 403
 
     cambios_voto = cambios_temporal = cambios_bloqueo = 0
 
@@ -534,12 +543,17 @@ def limpiar_numeros():
 
     db.session.commit()
 
+    # Marcar como ejecutado para no volver a correr
+    limpieza_realizada = True
+
     return (
-        f"✔️ Números normalizados exitosamente.<br><br>"
-        f"🗳️ Voto: {cambios_voto} modificados<br>"
-        f"📨 NumeroTemporal: {cambios_temporal} modificados<br>"
-        f"🚫 BloqueoWhatsapp: {cambios_bloqueo} modificados"
+        f"<h3>✔️ Números normalizados exitosamente</h3><br>"
+        f"🗳️ <b>Voto:</b> {cambios_voto} modificados<br>"
+        f"📨 <b>NumeroTemporal:</b> {cambios_temporal} modificados<br>"
+        f"🚫 <b>BloqueoWhatsapp:</b> {cambios_bloqueo} modificados<br><br>"
+        f"🔒 Esta ruta ha sido desactivada automáticamente."
     )
+
 
 
 
