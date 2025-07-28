@@ -381,10 +381,12 @@ def enviar_voto():
     mes = request.form.get('mes_nacimiento')
     anio = request.form.get('anio_nacimiento')
     pregunta1 = request.form.get('pregunta1')
-    candidato = request.form.get('candidato')
+   
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
-
+    pregunta4 = request.form.get('pregunta4')
+    pregunta5 = request.form.get('pregunta5')
+    pregunta6 = request.form.get('pregunta6')
     ci = request.form.get('ci') or None
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
@@ -394,7 +396,7 @@ def enviar_voto():
 
     # Validar campos requeridos
     if not all([genero, pais, departamento, provincia, municipio, recinto,
-                dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+                dia, mes, anio, pregunta1,  pregunta2, pregunta3]):
         return render_template("faltan_campos.html")
 
 
@@ -427,7 +429,7 @@ def enviar_voto():
         longitud=float(longitud) if longitud else None,
         ip=ip,
         pregunta1=pregunta1,
-        candidato=candidato,
+   
         pregunta2=pregunta2,
         pregunta3=pregunta3,
         pregunta4=pregunta4,
