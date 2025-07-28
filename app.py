@@ -61,14 +61,11 @@ class Voto(db.Model):
     longitud = db.Column(db.Float, nullable=True)
     ip = db.Column(db.String(50), nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
-    pregunta1 = db.Column(db.String(10), nullable=False)
+    pregunta1 = db.Column(db.String(100), nullable=False)
     candidato = db.Column(db.String(100), nullable=False)
-    pregunta2 = db.Column(db.String(10), nullable=False)
     pregunta3 = db.Column(db.String(10), nullable=False)
-    pregunta4 = db.Column(db.String(255), nullable=True)
-    pregunta5 = db.Column(db.String(255), nullable=True)
-    pregunta6 = db.Column(db.String(255), nullable=True)
     ci = db.Column(db.BigInteger, nullable=True)
+
 
 
 # ---------------------------
@@ -342,20 +339,17 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
-    # Validar REFERER (dominio de origen)
     referer = request.headers.get("Referer", "")
     dominio_permitido = os.environ.get("AZURE_DOMAIN", "https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net")
     
     if dominio_permitido not in referer:
-        print(f"❌ Referer inválido: {referer}")
         return "Acceso no autorizado (referer inválido).", 403
 
-    # Verifica que el número de sesión esté presente
     numero = session.get('numero_token')
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
 
-    # Extraer datos del formulario
+    # Campos requeridos
     genero = request.form.get('genero')
     pais = request.form.get('pais')
     departamento = request.form.get('departamento')
@@ -367,23 +361,15 @@ def enviar_voto():
     anio = request.form.get('anio_nacimiento')
     pregunta1 = request.form.get('pregunta1')
     candidato = request.form.get('candidato')
-    pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
-    pregunta4 = request.form.get('pregunta4')
-    pregunta5 = request.form.get('pregunta5')
-    pregunta6 = request.form.get('pregunta6')
     ci = request.form.get('ci') or None
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
-
-    # IP del usuario
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
-    # Validar campos requeridos
     if not all([genero, pais, departamento, provincia, municipio, recinto,
-                dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+                dia, mes, anio, pregunta1, candidato, pregunta3]):
         return render_template("faltan_campos.html")
-
 
     if pregunta3 == "Sí" and not ci:
         return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
@@ -394,11 +380,9 @@ def enviar_voto():
         except ValueError:
             return "CI inválido.", 400
 
-    # Verificar si ya votó
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
 
-    # Guardar el nuevo voto
     nuevo_voto = Voto(
         numero=numero,
         genero=genero,
@@ -415,19 +399,13 @@ def enviar_voto():
         ip=ip,
         pregunta1=pregunta1,
         candidato=candidato,
-        pregunta2=pregunta2,
         pregunta3=pregunta3,
-        pregunta4=pregunta4,
-        pregunta5=pregunta5,
-        pregunta6=pregunta6,
         ci=ci
     )
-
 
     db.session.add(nuevo_voto)
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
-
     session.pop('numero_token', None)
 
     return render_template("voto_exitoso.html",
@@ -442,6 +420,7 @@ def enviar_voto():
                            mes=mes,
                            anio=anio,
                            candidato=candidato)
+
 
 
 
