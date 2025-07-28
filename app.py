@@ -456,7 +456,7 @@ def enviar_voto():
                            dia=dia,
                            mes=mes,
                            anio=anio,
-                           candidato=candidato)
+
 
 
 
