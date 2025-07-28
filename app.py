@@ -360,13 +360,14 @@ def votar():
 # ---------------------------
 @app.route('/enviar_voto', methods=['POST'])
 def enviar_voto():
+
     referer = request.headers.get("Referer", "")
     dominio_permitido = os.environ.get("AZURE_DOMAIN", "https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net")
-    
+
     if dominio_permitido not in referer:
         return "Acceso no autorizado (referer inválido).", 403
 
-        numero = session.get("numero_token")
+    numero = session.get("numero_token")  # ← ✅ fuera del if
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
     numero = limpiar_numero(numero)
