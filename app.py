@@ -62,7 +62,7 @@ class Voto(db.Model):
     ip = db.Column(db.String(50), nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
     pregunta1 = db.Column(db.String(100), nullable=False)
-    candidato = db.Column(db.String(100), nullable=False)
+
     pregunta2 = db.Column(db.String(100), nullable=False)
     pregunta3 = db.Column(db.String(100), nullable=False)
     pregunta4 = db.Column(db.String(255), nullable=True)
@@ -366,7 +366,7 @@ def enviar_voto():
     mes = request.form.get('mes_nacimiento')
     anio = request.form.get('anio_nacimiento')
     pregunta1 = request.form.get('pregunta1')
-    candidato = request.form.get('candidato')
+    
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
     pregunta4 = request.form.get('pregunta4')
@@ -381,7 +381,7 @@ def enviar_voto():
 
     # Validar campos requeridos
     if not all([genero, pais, departamento, provincia, municipio, recinto,
-                dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
+                dia, mes, anio, pregunta1, pregunta2, pregunta3]):
         return render_template("faltan_campos.html")
 
 
@@ -414,7 +414,7 @@ def enviar_voto():
         longitud=float(longitud) if longitud else None,
         ip=ip,
         pregunta1=pregunta1,
-        candidato=candidato,
+
         pregunta2=pregunta2,
         pregunta3=pregunta3,
         pregunta4=pregunta4,
