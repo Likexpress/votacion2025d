@@ -316,8 +316,10 @@ def votar():
         return "Acceso no válido."
 
     try:
-        data = serializer.loads(token, max_age = 86400000)
-        numero = limpiar_numero(numero)
+  
+        data = serializer.loads(token, max_age=86400000)  
+        numero = limpiar_numero(data.get("numero"))
+
 
 
         dominio_token = data.get("dominio")
@@ -361,7 +363,11 @@ def enviar_voto():
     if dominio_permitido not in referer:
         return "Acceso no autorizado (referer inválido).", 403
 
+        numero = session.get("numero_token")
+    if not numero:
+        return "Acceso denegado: sin sesión válida o token expirado.", 403
     numero = limpiar_numero(numero)
+
 
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
