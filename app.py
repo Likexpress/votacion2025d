@@ -15,12 +15,44 @@ from flask_wtf.csrf import CSRFProtect
 from flask import Flask, request, render_template, redirect, jsonify, session
 from datetime import datetime, timedelta
 from itsdangerous import URLSafeTimedSerializer
+import unicodedata
+import re
+
+# ---------------------------
+# Normalizar números existentes (ejecutar solo una vez)
+# ---------------------------
+with app.app_context():
 
 
+    def limpiar_numero(numero_raw):
+        numero = unicodedata.normalize("NFKD", str(numero_raw))
+        numero = re.sub(r"\D", "", numero)
+        return f"+{numero}"
+
+
+    print(" Limpiando números en tabla Voto...")
+    votos = Voto.query.all()
+    for voto in votos:
+        numero_limpio = limpiar_numero(voto.numero)
+        if voto.numero != numero_limpio:
+            print(f"{voto.numero} -> {numero_limpio}")
+            voto.numero = numero_limpio
+    db.session.commit()
+
+    print(" Limpiando números en tabla NumeroTemporal...")
+    temporales = NumeroTemporal.query.all()
+    for temp in temporales:
+        numero_limpio = limpiar_numero(temp.numero)
+        if temp.numero != numero_limpio:
+            print(f"{temp.numero} -> {numero_limpio}")
+            temp.numero = numero_limpio
+    db.session.commit()
+
+    print(" Números limpiados correctamente.")
 
 
 # ---------------------------
-# Configuración inicial Hasta aqu sirve 123
+# Configuración inicial Hasta aqu sirve 1234
 # ---------------------------
 load_dotenv()
 
@@ -85,7 +117,7 @@ with app.app_context():
     db.create_all()
 
 # ---------------------------
-# Whatsapp
+# Whatsapp7
 # ---------------------------
 
 @app.route('/whatsapp', methods=['POST'])
@@ -106,7 +138,8 @@ def whatsapp_webhook():
 
         numero = messages[0]['from']  # Ej: 591XXXXXXXX
         texto = messages[0].get('text', {}).get('body', '').strip().lower()
-        numero_completo = "+" + numero
+        numero_completo = limpiar_numero("+" + numero)
+
 
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
@@ -261,7 +294,8 @@ def generar_link():
         if not pais.startswith("+"):
             return "Código de país inválido."
 
-        numero_completo = pais + numero
+        numero_completo = limpiar_numero(pais + numero)
+
 
         # Si ya votó, mostrar mensaje
         if Voto.query.filter_by(numero=numero_completo).first():
@@ -329,7 +363,8 @@ def votar():
         return render_template("voto_ya_registrado.html")
 
     # Guardar el número del token validado en sesión para comparación posterior segura
-    session['numero_token'] = numero
+    session['numero_token'] = limpiar_numero(numero)
+
 
     # Renderizar formulario y enviar el token también como campo oculto
     return render_template("votar.html", numero=numero, token=token)
@@ -352,6 +387,8 @@ def enviar_voto():
 
     # Verifica que el número de sesión esté presente
     numero = session.get('numero_token')
+    numero = limpiar_numero(numero)
+
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
 
@@ -489,6 +526,11 @@ def api_recintos():
 @app.route('/preguntas')
 def preguntas_frecuentes():
     return render_template("preguntas.html")
+
+
+
+
+
 
 # ---------------------------
 # Ejecutar localmente
