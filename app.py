@@ -15,6 +15,18 @@ from flask_wtf.csrf import CSRFProtect
 from flask import Flask, request, render_template, redirect, jsonify, session
 from datetime import datetime, timedelta
 from itsdangerous import URLSafeTimedSerializer
+import unicodedata
+import re
+
+def limpiar_numero(numero_raw):
+    """Normaliza el número eliminando espacios, símbolos invisibles y caracteres no numéricos."""
+    # Elimina símbolos Unicode raros y normaliza el texto
+    numero = unicodedata.normalize("NFKD", str(numero_raw))
+    # Elimina todo lo que no sea dígito
+    numero = re.sub(r"\D", "", numero)
+    # Asegura que tenga el prefijo +
+    return f"+{numero}"
+
 
 
 
@@ -103,7 +115,8 @@ def whatsapp_webhook():
 
         numero = messages[0]['from']  # Ej: 591XXXXXXXX
         texto = messages[0].get('text', {}).get('body', '').strip().lower()
-        numero_completo = "+" + numero
+        numero_completo = limpiar_numero(numero)
+
 
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
@@ -258,7 +271,8 @@ def generar_link():
         if not pais.startswith("+"):
             return "Código de país inválido."
 
-        numero_completo = pais + numero
+        numero_completo = limpiar_numero(pais + numero)
+
 
         # Si ya votó, mostrar mensaje
         if Voto.query.filter_by(numero=numero_completo).first():
@@ -303,7 +317,9 @@ def votar():
 
     try:
         data = serializer.loads(token, max_age = 86400000)
-        numero = data.get("numero")
+        numero = limpiar_numero(numero)
+
+
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
@@ -345,7 +361,8 @@ def enviar_voto():
     if dominio_permitido not in referer:
         return "Acceso no autorizado (referer inválido).", 403
 
-    numero = session.get('numero_token')
+    numero = limpiar_numero(numero)
+
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
 
