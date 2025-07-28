@@ -317,7 +317,9 @@ def votar():
 
     try:
         data = serializer.loads(token, max_age = 86400000)
+        numero = data.get("numero")
         numero = limpiar_numero(numero)
+
 
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
@@ -504,16 +506,41 @@ def limpiar_numeros():
     if clave_admin != os.environ.get("CLAVE_LIMPIEZA", "123limpiar"):
         return "No autorizado", 403
 
+    cambios_voto = cambios_temporal = cambios_bloqueo = 0
+
+    # --- Limpiar tabla Voto ---
     votos = Voto.query.all()
-    cambios = 0
     for voto in votos:
         numero_limpio = limpiar_numero(voto.numero)
         if voto.numero != numero_limpio:
             voto.numero = numero_limpio
-            cambios += 1
+            cambios_voto += 1
+
+    # --- Limpiar tabla NumeroTemporal ---
+    temporales = NumeroTemporal.query.all()
+    for temp in temporales:
+        numero_limpio = limpiar_numero(temp.numero)
+        if temp.numero != numero_limpio:
+            temp.numero = numero_limpio
+            cambios_temporal += 1
+
+    # --- Limpiar tabla BloqueoWhatsapp ---
+    bloqueos = BloqueoWhatsapp.query.all()
+    for bloqueo in bloqueos:
+        numero_limpio = limpiar_numero(bloqueo.numero)
+        if bloqueo.numero != numero_limpio:
+            bloqueo.numero = numero_limpio
+            cambios_bloqueo += 1
+
     db.session.commit()
 
-    return f"✔️ Números normalizados. Cambios realizados: {cambios}"
+    return (
+        f"✔️ Números normalizados exitosamente.<br><br>"
+        f"🗳️ Voto: {cambios_voto} modificados<br>"
+        f"📨 NumeroTemporal: {cambios_temporal} modificados<br>"
+        f"🚫 BloqueoWhatsapp: {cambios_bloqueo} modificados"
+    )
+
 
 
 
