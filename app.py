@@ -267,11 +267,14 @@ def generar_link():
         if not pais or not numero:
             return "Por favor, selecciona un país e ingresa tu número."
 
+
         numero = numero.replace(" ", "").replace("-", "")
+        pais = pais.strip()
         if not pais.startswith("+"):
-            return "Código de país inválido."
+            pais = f"+{pais}"  # agrega + si no está
 
         numero_completo = limpiar_numero(pais + numero)
+
 
 
         # Si ya votó, mostrar mensaje
