@@ -383,7 +383,6 @@ def enviar_voto():
     pregunta1 = request.form.get('pregunta1')
     candidato = request.form.get('candidato')
     pregunta2 = request.form.get('pregunta2')
-    pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
     latitud = request.form.get('latitud')
     longitud = request.form.get('longitud')
@@ -428,7 +427,6 @@ def enviar_voto():
         pregunta1=pregunta1,
         candidato=candidato,
         pregunta2=pregunta2,
-        pregunta3=pregunta3,
         ci=ci
     )
 
