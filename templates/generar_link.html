@@ -11,13 +11,10 @@
 
   <!-- Meta Description -->
   <meta name="description" content="Vota en las Primarias Bolivia 2025. Tu voz define el futuro.">
-
-  <!-- Open Graph para redes sociales -->
   <meta property="og:title" content="Elecciones Ciudadanas 2025" />
   <meta property="og:description" content="Participa en las Primarias y elige al candidato de oposición que representará a Bolivia." />
   <meta property="og:image" content="{{ request.host_url }}static/img/og-image.jpg" />
   <meta property="og:url" content="{{ request.host_url }}generar_link" />
-
   <meta property="og:type" content="website" />
 
   <style>
@@ -99,11 +96,9 @@
       Tu participación no solo es un derecho: es una señal de esperanza, compromiso y cambio para Bolivia.
     </div>
 
-
     <form method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-      
       <div class="mb-3 text-start">
         <label for="pais" class="form-label">País</label>
         <select name="pais" id="pais" class="form-select" required>
@@ -119,6 +114,7 @@
         <input type="tel" name="numero" id="numero" class="form-control" placeholder="Ej: 70000000"
                required pattern="^\d{8,11}$" maxlength="11" inputmode="numeric">
         <div class="form-text">Debe contener solo números (8 a 11 dígitos). No incluyas espacios ni guiones.</div>
+        <small id="previewNumero" class="form-text text-muted mt-1"></small>
       </div>
 
       <button id="submitBtn" type="submit" class="btn btn-success w-100">
@@ -149,20 +145,6 @@
       document.getElementById('loader').style.display = 'none';
     });
 
-    // Spinner y bloqueo de botón al enviar
-    const form = document.querySelector("form");
-    const submitBtn = document.getElementById("submitBtn");
-
-    form.addEventListener("submit", function () {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando...`;
-    });
-
-    // Solo permitir números en el campo número
-    document.getElementById("numero").addEventListener("input", function () {
-      this.value = this.value.replace(/\D/g, '');
-    });
-
     // Activar Select2
     document.addEventListener('DOMContentLoaded', function () {
       const select = document.getElementById('pais');
@@ -170,6 +152,35 @@
         theme: "bootstrap-5",
         placeholder: "Selecciona un país"
       });
+    });
+
+    // Spinner y validación al enviar formulario
+    const form = document.querySelector("form");
+    const submitBtn = document.getElementById("submitBtn");
+
+    form.addEventListener("submit", function (e) {
+      const input = document.getElementById("numero");
+      let raw = input.value.normalize("NFKD").replace(/\D/g, '');
+
+      if (raw.length < 8) {
+        e.preventDefault();
+        alert("Por favor, ingresa un número válido de al menos 8 dígitos.");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "Obtener enlace de votación";
+        return;
+      }
+
+      input.value = raw;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando...`;
+    });
+
+    // Limpieza en tiempo real del número ingresado
+    document.getElementById("numero").addEventListener("input", function () {
+      let raw = this.value.normalize("NFKD").replace(/\D/g, '');
+      if (raw.length > 11) raw = raw.slice(0, 11);
+      this.value = raw;
+      document.getElementById("previewNumero").innerText = raw ? "Número limpio: +" + raw : "";
     });
   </script>
 </body>
