@@ -116,9 +116,11 @@
 
       <div class="mb-3 text-start">
         <label for="numero" class="form-label">Número de WhatsApp</label>
+
         <input type="tel" name="numero" id="numero" class="form-control" placeholder="Ej: 70000000"
-               required pattern="^\d{8,11}$" maxlength="11" inputmode="numeric">
-        <div class="form-text">Debe contener solo números (8 a 11 dígitos). No incluyas espacios ni guiones.</div>
+              required pattern="^\d{8,11}$" maxlength="11" inputmode="numeric"
+              title="Debe contener entre 8 y 11 dígitos numéricos. No se permiten letras, espacios ni símbolos.">
+
       </div>
 
       <button id="submitBtn" type="submit" class="btn btn-success w-100">
