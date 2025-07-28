@@ -12,12 +12,11 @@
   <!-- Meta Description -->
   <meta name="description" content="Vota en las Primarias Bolivia 2025. Tu voz define el futuro.">
 
-  <!-- Open Graph para redes sociales -->
+  <!-- Open Graph -->
   <meta property="og:title" content="Elecciones Ciudadanas 2025" />
   <meta property="og:description" content="Participa en las Primarias y elige al candidato de oposición que representará a Bolivia." />
   <meta property="og:image" content="{{ request.host_url }}static/img/og-image.jpg" />
   <meta property="og:url" content="{{ request.host_url }}generar_link" />
-
   <meta property="og:type" content="website" />
 
   <style>
@@ -90,7 +89,6 @@
     <h3><strong>¡Bienvenido a las Votaciones Primarias 2025!</strong></h3>
     <p class="text-muted">Para comenzar, selecciona tu país e ingresa tu número de WhatsApp. Recuerda que solo puedes votar una vez por número.</p>
 
-    <!-- Aviso importante -->
     <div class="alert alert-warning text-start" role="alert">
       <strong>Importante para recibir tu enlace:</strong><br>
       El número que ingreses aquí debe ser <strong>exactamente el mismo</strong> desde el cual escribirás el mensaje por WhatsApp.  
@@ -99,11 +97,9 @@
       Tu participación no solo es un derecho: es una señal de esperanza, compromiso y cambio para Bolivia.
     </div>
 
-
     <form method="POST">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-      
       <div class="mb-3 text-start">
         <label for="pais" class="form-label">País</label>
         <select name="pais" id="pais" class="form-select" required>
@@ -117,8 +113,8 @@
       <div class="mb-3 text-start">
         <label for="numero" class="form-label">Número de WhatsApp</label>
         <input type="tel" name="numero" id="numero" class="form-control" placeholder="Ej: 70000000"
-               required pattern="^\d{8,11}$" maxlength="11" inputmode="numeric">
-        <div class="form-text">Debe contener solo números (8 a 11 dígitos). No incluyas espacios ni guiones.</div>
+               required maxlength="13" inputmode="numeric">
+        <div class="form-text">Debe contener solo números (8 a 13 dígitos). No incluyas espacios ni símbolos.</div>
       </div>
 
       <button id="submitBtn" type="submit" class="btn btn-success w-100">
@@ -126,7 +122,6 @@
       </button>
     </form>
 
-    <!-- Botones de tutorial -->
     <div class="tutorial-buttons mt-4">
       <a href="https://www.youtube.com/watch?v=VIDEO_ID_TELEFONO" target="_blank" class="btn btn-outline-primary w-100">📱 Cómo votar desde tu teléfono</a>
       <a href="https://www.youtube.com/watch?v=VIDEO_ID_PC" target="_blank" class="btn btn-outline-primary w-100">💻 Cómo votar desde tu computadora</a>
@@ -152,15 +147,16 @@
     // Spinner y bloqueo de botón al enviar
     const form = document.querySelector("form");
     const submitBtn = document.getElementById("submitBtn");
-
     form.addEventListener("submit", function () {
       submitBtn.disabled = true;
       submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Enviando...`;
     });
 
-    // Solo permitir números en el campo número
+    // Limpiar número: solo dígitos (quita invisibles, guiones, emojis)
     document.getElementById("numero").addEventListener("input", function () {
-      this.value = this.value.replace(/\D/g, '');
+      this.value = this.value
+        .normalize("NFKD")
+        .replace(/[^\d]/g, '');
     });
 
     // Activar Select2
