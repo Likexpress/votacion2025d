@@ -32,7 +32,7 @@ def limpiar_numero(numero_raw):
 
 
 # ---------------------------
-# Configuración inicial Hasta aqu sirve 123
+# Configuración inicial Hasta aqu sirve 12344
 # ---------------------------
 load_dotenv()
 
@@ -291,13 +291,16 @@ def generar_link():
         }
         token = serializer.dumps(token_data)
 
+
         # Verificar si ya está registrado
         temporal = NumeroTemporal.query.filter_by(numero=numero_completo).first()
         if not temporal:
             temporal = NumeroTemporal(numero=numero_completo, token=token)
             db.session.add(temporal)
+            db.session.commit()
         else:
-            temporal.token = token  # Actualizar token si ya existía
+            token = temporal.token  # ✅ Reutilizar el token existente
+
 
         db.session.commit()
 
