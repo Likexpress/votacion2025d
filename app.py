@@ -445,6 +445,7 @@ def enviar_voto():
 
     session.pop('numero_token', None)
 
+
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -455,7 +456,8 @@ def enviar_voto():
                            recinto=recinto,
                            dia=dia,
                            mes=mes,
-                           anio=anio,
+                           anio=anio)
+
 
 
 
