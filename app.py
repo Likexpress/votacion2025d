@@ -15,15 +15,6 @@ from flask_wtf.csrf import CSRFProtect
 from flask import Flask, request, render_template, redirect, jsonify, session
 from datetime import datetime, timedelta
 from itsdangerous import URLSafeTimedSerializer
-import unicodedata
-import re
-
-def limpiar_numero(numero_raw):
-    """Normaliza el número eliminando espacios, símbolos invisibles y caracteres no numéricos."""
-    numero = unicodedata.normalize("NFKD", str(numero_raw))
-    numero = re.sub(r"\D", "", numero)  # elimina todo lo que no sea dígito
-    return f"+{numero}"
-
 
 
 
@@ -115,8 +106,7 @@ def whatsapp_webhook():
 
         numero = messages[0]['from']  # Ej: 591XXXXXXXX
         texto = messages[0].get('text', {}).get('body', '').strip().lower()
-        numero_completo = limpiar_numero(numero)
-
+        numero_completo = "+" + numero
 
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
@@ -271,8 +261,7 @@ def generar_link():
         if not pais.startswith("+"):
             return "Código de país inválido."
 
-        numero_completo = limpiar_numero(pais + numero)
-
+        numero_completo = pais + numero
 
         # Si ya votó, mostrar mensaje
         if Voto.query.filter_by(numero=numero_completo).first():
@@ -318,9 +307,6 @@ def votar():
     try:
         data = serializer.loads(token, max_age = 86400000)
         numero = data.get("numero")
-        numero = limpiar_numero(numero)
-
-
         dominio_token = data.get("dominio")
         dominio_esperado = os.environ.get("AZURE_DOMAIN")
 
@@ -365,8 +351,7 @@ def enviar_voto():
         return "Acceso no autorizado (referer inválido).", 403
 
     # Verifica que el número de sesión esté presente
-    numero = limpiar_numero(session.get('numero_token'))
-
+    numero = session.get('numero_token')
     if not numero:
         return "Acceso denegado: sin sesión válida o token expirado.", 403
 
@@ -381,7 +366,7 @@ def enviar_voto():
     mes = request.form.get('mes_nacimiento')
     anio = request.form.get('anio_nacimiento')
     pregunta1 = request.form.get('pregunta1')
-   
+    candidato = request.form.get('candidato')
     pregunta2 = request.form.get('pregunta2')
     pregunta3 = request.form.get('pregunta3')
     pregunta4 = request.form.get('pregunta4')
@@ -396,7 +381,7 @@ def enviar_voto():
 
     # Validar campos requeridos
     if not all([genero, pais, departamento, provincia, municipio, recinto,
-                dia, mes, anio, pregunta1,  pregunta2, pregunta3]):
+                dia, mes, anio, pregunta1, candidato, pregunta2, pregunta3]):
         return render_template("faltan_campos.html")
 
 
@@ -429,7 +414,7 @@ def enviar_voto():
         longitud=float(longitud) if longitud else None,
         ip=ip,
         pregunta1=pregunta1,
-   
+        candidato=candidato,
         pregunta2=pregunta2,
         pregunta3=pregunta3,
         pregunta4=pregunta4,
@@ -445,7 +430,6 @@ def enviar_voto():
 
     session.pop('numero_token', None)
 
-
     return render_template("voto_exitoso.html",
                            numero=numero,
                            genero=genero,
@@ -456,9 +440,8 @@ def enviar_voto():
                            recinto=recinto,
                            dia=dia,
                            mes=mes,
-                           anio=anio)
-
-
+                           anio=anio,
+                           candidato=candidato)
 
 
 
@@ -498,68 +481,6 @@ def api_recintos():
     except Exception as e:
         print(f"❌ Error al leer CSV: {str(e)}")
         return "Error procesando los datos.", 500
-
-
-
-
-# Variable global para controlar si la limpieza ya fue ejecutada
-limpieza_realizada = False
-
-@app.route("/limpiar_numeros")
-def limpiar_numeros():
-    global limpieza_realizada
-
-    # Si ya fue ejecutado, denegar acceso
-    if limpieza_realizada:
-        return "❌ Esta operación ya fue ejecutada. Ruta desactivada.", 403
-
-    clave_admin = request.args.get("clave")
-    if clave_admin != os.environ.get("CLAVE_LIMPIEZA", "123limpiar"):
-        return "❌ No autorizado", 403
-
-    cambios_voto = cambios_temporal = cambios_bloqueo = 0
-
-    # --- Limpiar tabla Voto ---
-    votos = Voto.query.all()
-    for voto in votos:
-        numero_limpio = limpiar_numero(voto.numero)
-        if voto.numero != numero_limpio:
-            voto.numero = numero_limpio
-            cambios_voto += 1
-
-    # --- Limpiar tabla NumeroTemporal ---
-    temporales = NumeroTemporal.query.all()
-    for temp in temporales:
-        numero_limpio = limpiar_numero(temp.numero)
-        if temp.numero != numero_limpio:
-            temp.numero = numero_limpio
-            cambios_temporal += 1
-
-    # --- Limpiar tabla BloqueoWhatsapp ---
-    bloqueos = BloqueoWhatsapp.query.all()
-    for bloqueo in bloqueos:
-        numero_limpio = limpiar_numero(bloqueo.numero)
-        if bloqueo.numero != numero_limpio:
-            bloqueo.numero = numero_limpio
-            cambios_bloqueo += 1
-
-    db.session.commit()
-
-    # Marcar como ejecutado para no volver a correr
-    limpieza_realizada = True
-
-    return (
-        f"<h3>✔️ Números normalizados exitosamente</h3><br>"
-        f"🗳️ <b>Voto:</b> {cambios_voto} modificados<br>"
-        f"📨 <b>NumeroTemporal:</b> {cambios_temporal} modificados<br>"
-        f"🚫 <b>BloqueoWhatsapp:</b> {cambios_bloqueo} modificados<br><br>"
-        f"🔒 Esta ruta ha sido desactivada automáticamente."
-    )
-
-
-
-
-
 
 
 # ---------------------------
