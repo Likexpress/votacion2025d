@@ -22,8 +22,6 @@ import re
 # Normalizar números existentes (ejecutar solo una vez)
 # ---------------------------
 with app.app_context():
-
-
     def limpiar_numero(numero_raw):
         numero = unicodedata.normalize("NFKD", str(numero_raw))
         numero = re.sub(r"\D", "", numero)
@@ -52,7 +50,7 @@ with app.app_context():
 
 
 # ---------------------------
-# Configuración inicial Hasta aqu sirve 1234
+# Configuración inicial
 # ---------------------------
 load_dotenv()
 
@@ -60,10 +58,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "clave-super-secreta")
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
-csrf = CSRFProtect(app)  # ✅ Protección CSRF
-serializer = URLSafeTimedSerializer(SECRET_KEY)  # ✅ Crear serializer después de definir la clave
-
-
+csrf = CSRFProtect(app)
+serializer = URLSafeTimedSerializer(SECRET_KEY)
 
 # ---------------------------
 # Configuración de la base de datos
@@ -113,8 +109,6 @@ class NumeroTemporal(db.Model):
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-with app.app_context():
-    db.create_all()
 
 # ---------------------------
 # Whatsapp7
