@@ -5,7 +5,7 @@ phonenumbers
 itsdangerous
 requests
 SQLAlchemy
-Flask_SQLAlchemy
+flask_sqlalchemy
 python-dotenv
 flask-migrate
 Flask-WTF
