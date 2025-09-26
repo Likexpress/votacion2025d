@@ -101,62 +101,31 @@ with app.app_context():
 @csrf.exempt
 def whatsapp_webhook():
     try:
-        # Lee JSON seguro (no rompe si viene vacío)
-        data = request.get_json(force=True, silent=True) or {}
+        data = request.get_json()
         print("📥 JSON recibido:")
-        print(json.dumps(data, indent=2, ensure_ascii=False))
+        print(json.dumps(data, indent=2))
 
-        # ====== Normalización del payload (360dialog / Meta Cloud) ======
-        messages = None
+        entry = data.get('entry', [])[0]
+        changes = entry.get('changes', [])[0]
+        value = changes.get('value', {})
+        messages = value.get('messages')
 
-        # Formato Meta (Graph API): entry -> changes -> value -> messages
-        if isinstance(data, dict) and 'entry' in data:
-            try:
-                entry = (data.get('entry') or [])[0] or {}
-                changes = (entry.get('changes') or [])[0] or {}
-                value = changes.get('value', {}) or {}
-                messages = value.get('messages')
-            except Exception:
-                messages = None
-
-        # Formato "plano": { "messages": [...] }
-        if not messages and isinstance(data, dict) and 'messages' in data:
-            messages = data.get('messages')
-
-        # Si no hay mensajes no procesamos
         if not messages:
-            print("ℹ️ Webhook sin 'messages'; no hay nada que procesar.")
             return "ok", 200
 
-        # Tomamos el primer mensaje
-        msg = messages[0] or {}
+        numero = messages[0]['from']  # Ej: 591XXXXXXXX
+        texto = messages[0].get('text', {}).get('body', '').strip().lower()
+        numero_completo = limpiar_numero(numero)
 
-        # Número del remitente (MSISDN, a veces sin '+')
-        numero_raw = msg.get('from') or msg.get('wa_id') or ""
-        numero_completo = limpiar_numero(numero_raw)
 
-        # Texto del mensaje (puede venir en diferentes campos)
-        texto = ""
-        if isinstance(msg.get('text'), dict):
-            texto = (msg['text'].get('body') or "").strip()
-        elif isinstance(msg.get('button'), dict):
-            texto = (msg['button'].get('text') or "").strip()
-        elif isinstance(msg.get('interactive'), dict):
-            interactive = msg['interactive']
-            if isinstance(interactive.get('button_reply'), dict):
-                texto = (interactive['button_reply'].get('title') or "").strip()
-            elif isinstance(interactive.get('list_reply'), dict):
-                texto = (interactive['list_reply'].get('title') or "").strip()
-
-        texto_lc = texto.lower()
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
-        # Triggers flexibles (no bloquea si no están; solo loguea)
-        TRIGGERS = ("votar", "enlace", "link", "participar", "quiero votar")
-        if not any(t in texto_lc for t in TRIGGERS):
-            print("ℹ️ Mensaje sin palabra clave; continuaremos si el número está autorizado.")
+        # ❌ Ignorar si no contiene "votar"
+        if "votar" not in texto:
+            print("❌ Mensaje ignorado (no contiene 'votar')")
+            return "ok", 200
 
-        # ====== Verificación de bloqueo ======
+        # ⚠️ Consultar si está bloqueado
         bloqueo = db.session.execute(
             db.select(BloqueoWhatsapp).where(BloqueoWhatsapp.numero == numero_completo)
         ).scalar_one_or_none()
@@ -165,12 +134,12 @@ def whatsapp_webhook():
             print(f"🚫 Número bloqueado: {numero_completo}")
             return "ok", 200
 
-        # ====== Verificación de autorización (debe existir en NumeroTemporal) ======
+        # ✅ Verificar si está autorizado (debe existir en NumeroTemporal)
         autorizado = NumeroTemporal.query.filter_by(numero=numero_completo).first()
         if not autorizado:
-            print(f"❌ Número NO autorizado: {numero_completo}")
+            print(f"❌ Número no autorizado: {numero_completo}")
 
-            # Manejo de advertencias / bloqueo progresivo
+            # Manejo de advertencias
             if not bloqueo:
                 bloqueo = BloqueoWhatsapp(numero=numero_completo, intentos=1)
                 db.session.add(bloqueo)
@@ -178,6 +147,7 @@ def whatsapp_webhook():
                 bloqueo.intentos += 1
                 if bloqueo.intentos >= 4:
                     bloqueo.bloqueado = True
+
             db.session.commit()
 
             if bloqueo.intentos < 4:
@@ -194,40 +164,33 @@ def whatsapp_webhook():
                     "Tus mensajes ya no serán respondidos por este sistema."
                 )
 
-            # Enviar advertencia (si hay token configurado)
-            try:
-                requests.post(
-                    "https://waba-v2.360dialog.io/messages",
-                    headers={
-                        "Content-Type": "application/json",
-                        "D360-API-KEY": os.environ.get("WABA_TOKEN")
-                    },
-                    json={
-                        "messaging_product": "whatsapp",
-                        "recipient_type": "individual",
-                        "to": numero_completo,
-                        "type": "text",
-                        "text": {"preview_url": False, "body": advertencia}
-                    },
-                    timeout=15
-                )
-            except Exception as e:
-                print("❌ Error enviando advertencia WhatsApp:", str(e))
-
+            # Enviar advertencia solo si aún no está bloqueado
+            requests.post(
+                "https://waba-v2.360dialog.io/messages",
+                headers={
+                    "Content-Type": "application/json",
+                    "D360-API-KEY": os.environ.get("WABA_TOKEN")
+                },
+                json={
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": numero_completo,
+                    "type": "text",
+                    "text": {
+                        "preview_url": False,
+                        "body": advertencia
+                    }
+                }
+            )
             return "ok", 200
 
-        # ====== Ya autorizado: recuperar token y enviar enlace ======
+        # ✅ Ya está autorizado, usar su token guardado
         if not autorizado.token:
             print(f"⚠️ No se encontró token almacenado para {numero_completo}")
             return "ok", 200
 
-        # Dominios coherentes
-        AZURE_DOMAIN = os.environ.get(
-            "AZURE_DOMAIN",
-            request.host_url.rstrip('/')
-        ).rstrip('/')
+        link = f"{os.environ.get('AZURE_DOMAIN', request.host_url.rstrip('/')).rstrip('/')}/votar?token={autorizado.token}"
 
-        link = f"{AZURE_DOMAIN}/votar?token={autorizado.token}"
         print(f"🔗 Enlace recuperado: {link}")
 
         mensaje = (
@@ -239,34 +202,32 @@ def whatsapp_webhook():
         )
 
         # Enviar mensaje con el enlace
-        try:
-            respuesta = requests.post(
-                "https://waba-v2.360dialog.io/messages",
-                headers={
-                    "Content-Type": "application/json",
-                    "D360-API-KEY": os.environ.get("WABA_TOKEN")
-                },
-                json={
-                    "messaging_product": "whatsapp",
-                    "recipient_type": "individual",
-                    "to": numero_completo,
-                    "type": "text",
-                    "text": {"preview_url": False, "body": mensaje}
-                },
-                timeout=15
-            )
-            if 200 <= respuesta.status_code < 300:
-                print("✅ Enlace enviado correctamente.")
-            else:
-                print(f"❌ Error al enviar mensaje WhatsApp: {respuesta.status_code} - {respuesta.text}")
-        except Exception as e:
-            print("❌ Error al enviar WhatsApp:", str(e))
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": numero_completo,
+            "type": "text",
+            "text": {
+                "preview_url": False,
+                "body": mensaje
+            }
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "D360-API-KEY": os.environ.get("WABA_TOKEN")
+        }
+
+        respuesta = requests.post("https://waba-v2.360dialog.io/messages", headers=headers, json=payload)
+        if respuesta.status_code == 200:
+            print("✅ Enlace enviado correctamente.")
+        else:
+            print(f"❌ Error al enviar mensaje WhatsApp: {respuesta.status_code} - {respuesta.text}")
 
     except Exception as e:
         print("❌ Error procesando webhook:", str(e))
 
     return "ok", 200
-
 
 
 
