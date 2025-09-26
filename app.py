@@ -73,8 +73,8 @@ class Voto(db.Model):
     longitud = db.Column(db.Float, nullable=True)
     ip = db.Column(db.String(50), nullable=False)
     fecha = db.Column(db.DateTime, default=datetime.utcnow)
-    pregunta1 = db.Column(db.String(100), nullable=False)
-
+    
+    candidato = db.Column(db.String(100), nullable=False)
     pregunta3 = db.Column(db.String(10), nullable=False)
     ci = db.Column(db.BigInteger, nullable=True)
 
@@ -101,31 +101,62 @@ with app.app_context():
 @csrf.exempt
 def whatsapp_webhook():
     try:
-        data = request.get_json()
+        # Lee JSON seguro (no rompe si viene vacío)
+        data = request.get_json(force=True, silent=True) or {}
         print("📥 JSON recibido:")
-        print(json.dumps(data, indent=2))
+        print(json.dumps(data, indent=2, ensure_ascii=False))
 
-        entry = data.get('entry', [])[0]
-        changes = entry.get('changes', [])[0]
-        value = changes.get('value', {})
-        messages = value.get('messages')
+        # ====== Normalización del payload (360dialog / Meta Cloud) ======
+        messages = None
 
+        # Formato Meta (Graph API): entry -> changes -> value -> messages
+        if isinstance(data, dict) and 'entry' in data:
+            try:
+                entry = (data.get('entry') or [])[0] or {}
+                changes = (entry.get('changes') or [])[0] or {}
+                value = changes.get('value', {}) or {}
+                messages = value.get('messages')
+            except Exception:
+                messages = None
+
+        # Formato "plano": { "messages": [...] }
+        if not messages and isinstance(data, dict) and 'messages' in data:
+            messages = data.get('messages')
+
+        # Si no hay mensajes no procesamos
         if not messages:
+            print("ℹ️ Webhook sin 'messages'; no hay nada que procesar.")
             return "ok", 200
 
-        numero = messages[0]['from']  # Ej: 591XXXXXXXX
-        texto = messages[0].get('text', {}).get('body', '').strip().lower()
-        numero_completo = limpiar_numero(numero)
+        # Tomamos el primer mensaje
+        msg = messages[0] or {}
 
+        # Número del remitente (MSISDN, a veces sin '+')
+        numero_raw = msg.get('from') or msg.get('wa_id') or ""
+        numero_completo = limpiar_numero(numero_raw)
 
+        # Texto del mensaje (puede venir en diferentes campos)
+        texto = ""
+        if isinstance(msg.get('text'), dict):
+            texto = (msg['text'].get('body') or "").strip()
+        elif isinstance(msg.get('button'), dict):
+            texto = (msg['button'].get('text') or "").strip()
+        elif isinstance(msg.get('interactive'), dict):
+            interactive = msg['interactive']
+            if isinstance(interactive.get('button_reply'), dict):
+                texto = (interactive['button_reply'].get('title') or "").strip()
+            elif isinstance(interactive.get('list_reply'), dict):
+                texto = (interactive['list_reply'].get('title') or "").strip()
+
+        texto_lc = texto.lower()
         print(f"📨 Mensaje recibido de {numero_completo}: '{texto}'")
 
-        # ❌ Ignorar si no contiene "votar"
-        if "votar" not in texto:
-            print("❌ Mensaje ignorado (no contiene 'votar')")
-            return "ok", 200
+        # Triggers flexibles (no bloquea si no están; solo loguea)
+        TRIGGERS = ("votar", "enlace", "link", "participar", "quiero votar")
+        if not any(t in texto_lc for t in TRIGGERS):
+            print("ℹ️ Mensaje sin palabra clave; continuaremos si el número está autorizado.")
 
-        # ⚠️ Consultar si está bloqueado
+        # ====== Verificación de bloqueo ======
         bloqueo = db.session.execute(
             db.select(BloqueoWhatsapp).where(BloqueoWhatsapp.numero == numero_completo)
         ).scalar_one_or_none()
@@ -134,12 +165,12 @@ def whatsapp_webhook():
             print(f"🚫 Número bloqueado: {numero_completo}")
             return "ok", 200
 
-        # ✅ Verificar si está autorizado (debe existir en NumeroTemporal)
+        # ====== Verificación de autorización (debe existir en NumeroTemporal) ======
         autorizado = NumeroTemporal.query.filter_by(numero=numero_completo).first()
         if not autorizado:
-            print(f"❌ Número no autorizado: {numero_completo}")
+            print(f"❌ Número NO autorizado: {numero_completo}")
 
-            # Manejo de advertencias
+            # Manejo de advertencias / bloqueo progresivo
             if not bloqueo:
                 bloqueo = BloqueoWhatsapp(numero=numero_completo, intentos=1)
                 db.session.add(bloqueo)
@@ -147,13 +178,12 @@ def whatsapp_webhook():
                 bloqueo.intentos += 1
                 if bloqueo.intentos >= 4:
                     bloqueo.bloqueado = True
-
             db.session.commit()
 
             if bloqueo.intentos < 4:
                 advertencia = (
                     "⚠️ Para recibir tu enlace de votación, primero debes registrarte en el portal oficial:\n\n"
-                    "👉 https://bit.ly/primariaBK\n\n"
+                    "👉 https://bit.ly/bkprimarias\n\n"
                     "Asegúrate de ingresar correctamente tu número de WhatsApp durante el registro, "
                     "ya que solo ese número podrá recibir el enlace.\n\n"
                     f"Advertencia {bloqueo.intentos}/3"
@@ -164,33 +194,40 @@ def whatsapp_webhook():
                     "Tus mensajes ya no serán respondidos por este sistema."
                 )
 
-            # Enviar advertencia solo si aún no está bloqueado
-            requests.post(
-                "https://waba-v2.360dialog.io/messages",
-                headers={
-                    "Content-Type": "application/json",
-                    "D360-API-KEY": os.environ.get("WABA_TOKEN")
-                },
-                json={
-                    "messaging_product": "whatsapp",
-                    "recipient_type": "individual",
-                    "to": numero_completo,
-                    "type": "text",
-                    "text": {
-                        "preview_url": False,
-                        "body": advertencia
-                    }
-                }
-            )
+            # Enviar advertencia (si hay token configurado)
+            try:
+                requests.post(
+                    "https://waba-v2.360dialog.io/messages",
+                    headers={
+                        "Content-Type": "application/json",
+                        "D360-API-KEY": os.environ.get("WABA_TOKEN")
+                    },
+                    json={
+                        "messaging_product": "whatsapp",
+                        "recipient_type": "individual",
+                        "to": numero_completo,
+                        "type": "text",
+                        "text": {"preview_url": False, "body": advertencia}
+                    },
+                    timeout=15
+                )
+            except Exception as e:
+                print("❌ Error enviando advertencia WhatsApp:", str(e))
+
             return "ok", 200
 
-        # ✅ Ya está autorizado, usar su token guardado
+        # ====== Ya autorizado: recuperar token y enviar enlace ======
         if not autorizado.token:
             print(f"⚠️ No se encontró token almacenado para {numero_completo}")
             return "ok", 200
 
-        link = f"{os.environ.get('AZURE_DOMAIN', request.host_url.rstrip('/')).rstrip('/')}/votar?token={autorizado.token}"
+        # Dominios coherentes
+        AZURE_DOMAIN = os.environ.get(
+            "AZURE_DOMAIN",
+            request.host_url.rstrip('/')
+        ).rstrip('/')
 
+        link = f"{AZURE_DOMAIN}/votar?token={autorizado.token}"
         print(f"🔗 Enlace recuperado: {link}")
 
         mensaje = (
@@ -202,32 +239,34 @@ def whatsapp_webhook():
         )
 
         # Enviar mensaje con el enlace
-        payload = {
-            "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": numero_completo,
-            "type": "text",
-            "text": {
-                "preview_url": False,
-                "body": mensaje
-            }
-        }
-
-        headers = {
-            "Content-Type": "application/json",
-            "D360-API-KEY": os.environ.get("WABA_TOKEN")
-        }
-
-        respuesta = requests.post("https://waba-v2.360dialog.io/messages", headers=headers, json=payload)
-        if respuesta.status_code == 200:
-            print("✅ Enlace enviado correctamente.")
-        else:
-            print(f"❌ Error al enviar mensaje WhatsApp: {respuesta.status_code} - {respuesta.text}")
+        try:
+            respuesta = requests.post(
+                "https://waba-v2.360dialog.io/messages",
+                headers={
+                    "Content-Type": "application/json",
+                    "D360-API-KEY": os.environ.get("WABA_TOKEN")
+                },
+                json={
+                    "messaging_product": "whatsapp",
+                    "recipient_type": "individual",
+                    "to": numero_completo,
+                    "type": "text",
+                    "text": {"preview_url": False, "body": mensaje}
+                },
+                timeout=15
+            )
+            if 200 <= respuesta.status_code < 300:
+                print("✅ Enlace enviado correctamente.")
+            else:
+                print(f"❌ Error al enviar mensaje WhatsApp: {respuesta.status_code} - {respuesta.text}")
+        except Exception as e:
+            print("❌ Error al enviar WhatsApp:", str(e))
 
     except Exception as e:
         print("❌ Error procesando webhook:", str(e))
 
     return "ok", 200
+
 
 
 
@@ -365,7 +404,7 @@ def votar():
 def enviar_voto():
 
     referer = request.headers.get("Referer", "")
-    dominio_permitido = os.environ.get("AZURE_DOMAIN", "https://votacionciudadana-awh5gchrdna0fmgx.brazilsouth-01.azurewebsites.net")
+    dominio_permitido = os.environ.get("AZURE_DOMAIN", "votacionprimarias2025-g7ebaphpgrcucgbr.brazilsouth-01.azurewebsites.net")
 
     if dominio_permitido not in referer:
         return "Acceso no autorizado (referer inválido).", 403
@@ -389,8 +428,8 @@ def enviar_voto():
     dia = request.form.get('dia_nacimiento')
     mes = request.form.get('mes_nacimiento')
     anio = request.form.get('anio_nacimiento')
-    pregunta1 = request.form.get('pregunta1')
-
+    
+    candidato = request.form.get('candidato')
     pregunta3 = request.form.get('pregunta3')
     ci = request.form.get('ci') or None
     latitud = request.form.get('latitud')
@@ -399,9 +438,9 @@ def enviar_voto():
 
 
     if not all([genero, pais, departamento, provincia, municipio, recinto,
-                dia, mes, anio, pregunta1, pregunta3]):
-
+                dia, mes, anio, candidato, pregunta3]):
         return render_template("faltan_campos.html")
+
 
     if pregunta3 == "Sí" and not ci:
         return "Debes ingresar tu CI si respondes que colaborarás en el control del voto.", 400
@@ -414,7 +453,6 @@ def enviar_voto():
 
     if Voto.query.filter_by(numero=numero).first():
         return render_template("voto_ya_registrado.html")
-
 
     nuevo_voto = Voto(
         numero=numero,
@@ -430,31 +468,29 @@ def enviar_voto():
         latitud=float(latitud) if latitud else None,
         longitud=float(longitud) if longitud else None,
         ip=ip,
-        pregunta1=pregunta1,
+        
+        candidato=candidato,
         pregunta3=pregunta3,
         ci=ci
     )
-
 
     db.session.add(nuevo_voto)
     NumeroTemporal.query.filter_by(numero=numero).delete()
     db.session.commit()
     session.pop('numero_token', None)
 
-
     return render_template("voto_exitoso.html",
-                        numero=numero,
-                        genero=genero,
-                        pais=pais,
-                        departamento=departamento,
-                        provincia=provincia,
-                        municipio=municipio,
-                        recinto=recinto,
-                        dia=dia,
-                        mes=mes,
-                        anio=anio,
-                        pregunta1=pregunta1)
-
+                           numero=numero,
+                           genero=genero,
+                           pais=pais,
+                           departamento=departamento,
+                           provincia=provincia,
+                           municipio=municipio,
+                           recinto=recinto,
+                           dia=dia,
+                           mes=mes,
+                           anio=anio,
+                           candidato=candidato)
 
 
 
@@ -467,7 +503,7 @@ def enviar_voto():
 def api_recintos():
     # Validación del dominio de origen (protección básica)
     referer = request.headers.get("Referer", "")
-    dominio_esperado = os.environ.get("AZURE_DOMAIN", "https://primariasbunker.org")
+    dominio_esperado = os.environ.get("AZURE_DOMAIN", "votacionprimarias2025-g7ebaphpgrcucgbr.brazilsouth-01.azurewebsites.net")
     
     if dominio_esperado not in referer:
         print(f"❌ Acceso denegado a /api/recintos desde Referer: {referer}")
