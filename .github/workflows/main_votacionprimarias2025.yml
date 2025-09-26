@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -28,11 +28,11 @@ jobs:
         run: |
           python -m venv venv
           source venv/bin/activate
-      
+
       - name: Install dependencies
         run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+
+      # Optional: run tests here
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
@@ -46,26 +46,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: python-app
-      
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_89B63416EBDA47AEBCEE6B4D2E6A8FBB }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_6FD641314807405ABAFDA9C79C5AD24D }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_36834E2B26B14615A4E4E99553D44505 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_0702C69445544F648C1E37C12F237FBB }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A46E36F70C8A4D9984EE3816A127FFB6 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_7D9DF8B8FD61477190B253C152FBFA78 }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
-          app-name: 'votacionprimarias2025'
+          app-name: 'votacionprimarias2025-web'
           slot-name: 'Production'
-          
+          package: '.'
