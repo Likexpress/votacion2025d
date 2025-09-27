@@ -135,17 +135,115 @@
         </div>
 
         <!-- Preguntas de intención de voto -->
-        <!-- Preguntas de intención de voto -->
-        <div class="section-title">Preferencia Electoral</div>
+        <!-- === CSS específico (puede ir en <style> o tu CSS global) === -->
+        <style>
+          .candidate-grid { display:grid; gap:12px }
+          @media (min-width:768px){ .candidate-grid{ grid-template-columns:1fr 1fr } }
+          .candidate-card{
+            position:relative; border:1.5px solid #e3e6ea; border-radius:12px;
+            padding:14px 14px 14px 52px; background:#fff;
+            box-shadow:0 1px 3px rgba(0,0,0,.04); cursor:pointer; min-height:88px
+          }
+          .candidate-card:hover{ border-color:#cbd3da }
+          .candidate-card.selected{ border-color:#0d6efd; box-shadow:0 0 0 3px rgba(13,110,253,.15) }
+          .candidate-radio{ position:absolute; left:14px; top:50%; transform:translateY(-50%); width:22px; height:22px }
+          .party{ font-weight:700; font-size:.95rem; letter-spacing:.2px }
+          .party.pdc{ color:#007a33 }     /* verde */
+          .party.libre{ color:#d52b1e }   /* rojo  */
+          /* Opciones no partidarias */
+          .party.blanco{ color:#6c757d }  /* gris  */
+          .party.nulo{ color:#343a40 }    /* gris oscuro */
+          .party.indeciso{ color:#b08900 }/* dorado/aviso */
+          .party.novota{ color:#0b5ed7 }  /* azul info */
+          .pres{ margin:2px 0 0; font-weight:700 }
+          .vice{ margin:0; color:#6c757d; font-size:.92rem }
+          .note{ font-size:.9rem; color:#6c757d }
+        </style>
+
+        <!-- === Decisión Electoral (tarjetas con colores) === -->
+        <div class="section-title">Decisión Electoral</div>
+        <div class="mb-2">
+          <label class="form-label">
+            ¿Por quién votarás el <strong>domingo 19 de octubre</strong> en esta
+            <strong>segunda vuelta</strong> de elecciones presidenciales?
+          </label>
+          <div class="note">Se vota por el <strong>Presidente</strong>. Se muestra el binomio para referencia.</div>
+        </div>
+
+        <div class="candidate-grid" id="candidatos">
+          <!-- PDC -->
+          <label class="candidate-card" for="cand-pdc">
+            <input class="form-check-input candidate-radio" type="radio" id="cand-pdc"
+                  name="candidato" value="Rodrigo Paz Pereyra" required>
+            <div class="party pdc">PDC</div>
+            <div class="pres">Rodrigo Paz Pereyra <small>(Presidente)</small></div>
+            <p class="vice">Edman Lara <small>(Vicepresidente)</small></p>
+          </label>
+
+          <!-- LIBRE -->
+          <label class="candidate-card" for="cand-libre">
+            <input class="form-check-input candidate-radio" type="radio" id="cand-libre"
+                  name="candidato" value="Jorge Tuto Quiroga" required>
+            <div class="party libre">LIBRE</div>
+            <div class="pres">Jorge “Tuto” Quiroga <small>(Presidente)</small></div>
+            <p class="vice">Juan Pablo Velasco <small>(Vicepresidente)</small></p>
+          </label>
+
+          <!-- Voto en blanco -->
+          <label class="candidate-card" for="cand-blanco">
+            <input class="form-check-input candidate-radio" type="radio" id="cand-blanco"
+                  name="candidato" value="Voto en blanco" required>
+            <div class="party blanco">VOTO EN BLANCO</div>
+            <div class="pres">No marcaré ninguna candidatura</div>
+            <p class="vice">Boleta válida sin preferencia</p>
+          </label>
+
+          <!-- Voto nulo -->
+          <label class="candidate-card" for="cand-nulo">
+            <input class="form-check-input candidate-radio" type="radio" id="cand-nulo"
+                  name="candidato" value="Voto nulo" required>
+            <div class="party nulo">VOTO NULO</div>
+            <div class="pres">Anularé mi voto</div>
+            <p class="vice">Boleta inválida voluntariamente</p>
+          </label>
+
+          <!-- No sabe aún -->
+          <label class="candidate-card" for="cand-indeciso">
+            <input class="form-check-input candidate-radio" type="radio" id="cand-indeciso"
+                  name="candidato" value="Aún no lo decidí" required>
+            <div class="party indeciso">INDECISO/A</div>
+            <div class="pres">Aún no lo decidí</div>
+            <p class="vice">Necesito más información</p>
+          </label>
+
+          <!-- No va a votar -->
+          <label class="candidate-card" for="cand-novota">
+            <input class="form-check-input candidate-radio" type="radio" id="cand-novota"
+                  name="candidato" value="No votaré" required>
+            <div class="party novota">NO VOTARÉ</div>
+            <div class="pres">No asistiré a votar</div>
+            <p class="vice">Me ausentaré en esta elección</p>
+          </label>
+        </div>
+
+        <!-- === JS mínimo para resaltar selección === -->
+        <script>
+          (function () {
+            const grid = document.getElementById('candidatos');
+            function paint() {
+              grid.querySelectorAll('.candidate-card').forEach(card => {
+                const r = card.querySelector('input[type="radio"]');
+                card.classList.toggle('selected', r.checked);
+              });
+            }
+            grid.addEventListener('change', paint);
+            paint();
+          })();
+        </script>
 
 
-        <label for="pregunta1" class="form-label">¿Por quién votarás el domingo 17 de agosto?</label>
-        <select class="form-select" name="pregunta1" id="pregunta1" required>
-          <option value="" disabled selected>Selecciona una opción</option>
-          <option value="Jorge Tuto Quiroga">Jorge Tuto Quiroga</option>
-          <option value="Manfred Reyes Villa">Manfred Reyes Villa</option>
-          <option value="Samuel Doria Medina">Samuel Doria Medina</option>
-        </select>
+
+
 
 
 
